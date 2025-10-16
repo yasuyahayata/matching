@@ -1,0 +1,166 @@
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
+
+export default function Home() {
+  const { data: session } = useSession()
+  const router = useRouter()
+  const [jobs, setJobs] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* ナビゲーションヘッダー */}
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                クラウドソーシング MVP
+              </h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              {session ? (
+                <>
+                  <span className="text-gray-700 text-sm">
+                    {session.user?.email}
+                  </span>
+                  <Link
+                    href="/post-job"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
+                  >
+                    案件投稿
+                  </Link>
+                  <button
+                    onClick={() => router.push('/profile')}
+                    className="text-gray-600 hover:text-gray-900"
+                  >
+                    プロフィール
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="text-gray-700 hover:text-gray-900">
+                    ログイン
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700"
+                  >
+                    新規登録
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* ヒーローセクション */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-20">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <h2 className="text-5xl font-bold mb-4">
+            プロフェッショナルなフリーランサーと企業をつなぐ
+          </h2>
+          <p className="text-xl mb-8 opacity-90">
+            次世代のワークプラットフォーム
+          </p>
+          <div className="flex justify-center space-x-4">
+            {!session && (
+              <Link
+                href="/register"
+                className="bg-white text-blue-600 px-8 py-3 rounded-xl font-semibold hover:bg-gray-100 transition-all duration-200 transform hover:scale-105"
+              >
+                今すぐ始める
+              </Link>
+            )}
+            <Link
+              href="#jobs"
+              className="border-2 border-white text-white px-8 py-3 rounded-xl font-semibold hover:bg-white hover:text-blue-600 transition-all duration-200"
+            >
+              案件を見る
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* 検索セクション */}
+      <div className="py-12 bg-white" id="jobs">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h3 className="text-3xl font-bold text-gray-900 mb-4">
+              あなたにぴったりの案件を見つけよう
+            </h3>
+            <div className="max-w-2xl mx-auto">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="案件を検索（例：Webデザイン、ライティング、プログラミング）"
+                  className="w-full px-6 py-4 text-lg border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <button className="absolute right-2 top-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-purple-700">
+                  検索
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* サンプル案件カード */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* サンプル案件1 */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-200 hover:scale-105">
+              <div className="flex justify-between items-start mb-4">
+                <span className="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">Webデザイン</span>
+                <span className="text-2xl font-bold text-green-600">¥50,000</span>
+              </div>
+              <h4 className="text-xl font-semibold text-gray-900 mb-3">ECサイトのリニューアルデザイン</h4>
+              <p className="text-gray-600 mb-4">既存のECサイトを現代的なデザインにリニューアルしてください。レスポンシブ対応必須。</p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-500">締切: 2024/12/31</span>
+                <Link href="/login" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:from-blue-700 hover:to-purple-700">
+                  応募する
+                </Link>
+              </div>
+            </div>
+
+            {/* サンプル案件2 */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-200 hover:scale-105">
+              <div className="flex justify-between items-start mb-4">
+                <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm font-medium">ライティング</span>
+                <span className="text-2xl font-bold text-green-600">¥30,000</span>
+              </div>
+              <h4 className="text-xl font-semibold text-gray-900 mb-3">企業ブログ記事の執筆</h4>
+              <p className="text-gray-600 mb-4">IT企業のブログ記事を10本執筆してください。SEO対策済みの高品質な記事をお願いします。</p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-500">締切: 2024/11/30</span>
+                <Link href="/login" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:from-blue-700 hover:to-purple-700">
+                  応募する
+                </Link>
+              </div>
+            </div>
+
+            {/* サンプル案件3 */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-200 hover:scale-105">
+              <div className="flex justify-between items-start mb-4">
+                <span className="bg-purple-100 text-purple-600 px-3 py-1 rounded-full text-sm font-medium">プログラミング</span>
+                <span className="text-2xl font-bold text-green-600">¥100,000</span>
+              </div>
+              <h4 className="text-xl font-semibold text-gray-900 mb-3">React.js アプリ開発</h4>
+              <p className="text-gray-600 mb-4">顧客管理システムをReact.jsで開発してください。API連携とレスポンシブデザイン必須。</p>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-500">締切: 2025/01/15</span>
+                <Link href="/login" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:from-blue-700 hover:to-purple-700">
+                  応募する
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
