@@ -4,6 +4,58 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
+// 都道府県リスト
+const PREFECTURES = [
+  '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+  '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+  '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
+  '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
+  '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+  '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
+  '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県', '海外'
+]
+
+// スキル一覧（カテゴリ別）
+const skillsData = {
+  'プログラミング': [
+    'React', 'Vue.js', 'Angular', 'TypeScript', 'JavaScript', 
+    'Python', 'Java', 'PHP', 'Ruby', 'Go', 'Swift', 'Kotlin', 
+    'C#', 'Node.js', 'Django', 'Flask', 'Laravel', 'Ruby on Rails', 
+    'Next.js', 'Nuxt.js', 'Express.js'
+  ],
+  'デザイン': [
+    'Figma', 'Adobe XD', 'Sketch', 'Photoshop', 'Illustrator', 
+    'InDesign', 'After Effects', 'Premiere Pro', 'Blender', 
+    'Canva', 'UI/UX', 'グラフィックデザイン', 'ロゴデザイン'
+  ],
+  'マーケティング': [
+    'Google Analytics', 'SEO', 'SEM', 'SNS運用', 'Facebook広告', 
+    'Google広告', 'Instagram運用', 'Twitter運用', 'LINE広告',
+    'コンテンツマーケティング', 'メールマーケティング', 'アフィリエイト'
+  ],
+  'ライティング': [
+    'SEOライティング', 'コピーライティング', '技術文書作成', 
+    '翻訳（英日）', '翻訳（日英）', '校正', '編集', 'ブログ執筆',
+    'プレスリリース', 'シナリオ作成'
+  ],
+  '動画・映像': [
+    '動画編集', 'アニメーション', 'モーショングラフィックス',
+    'YouTube編集', 'TikTok編集', '撮影', '字幕作成', '音声編集'
+  ],
+  'その他': [
+    'Excel', 'PowerPoint', 'Word', 'SQL', 'Git', 'Docker', 
+    'AWS', 'Firebase', 'WordPress', 'Shopify', 'データ分析',
+    'プロジェクト管理', 'Slack', 'Notion'
+  ]
+}
+
+// よく使われるスキル
+const popularSkills = [
+  'React', 'Vue.js', 'TypeScript', 'JavaScript', 'Python', 
+  'PHP', 'Figma', 'Photoshop', 'Illustrator', 'WordPress',
+  'SEO', 'Google Analytics', 'Excel'
+]
+
 export default function Profile() {
   const { data: session } = useSession()
   const router = useRouter()
@@ -16,11 +68,13 @@ export default function Profile() {
     email: '',
     bio: '',
     skills: [],
-    hourly_rate: '',
     location: '',
     portfolio_url: '',
     avatar_url: ''
   })
+
+  const [skillSearch, setSkillSearch] = useState('')
+  const [showAllSkills, setShowAllSkills] = useState(false)
 
   const [postedJobs, setPostedJobs] = useState([])
   const [stats, setStats] = useState({
@@ -40,7 +94,6 @@ export default function Profile() {
     try {
       setLoading(true)
       
-      // Supabaseからプロフィール取得
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -57,19 +110,16 @@ export default function Profile() {
           email: data.email || session.user.email || '',
           bio: data.bio || '',
           skills: data.skills || [],
-          hourly_rate: data.hourly_rate || '',
           location: data.location || '',
           portfolio_url: data.portfolio_url || '',
           avatar_url: data.avatar_url || session.user.image || ''
         })
       } else {
-        // プロフィールが存在しない場合、初期値を設定
         setProfile({
           full_name: session.user.name || '',
           email: session.user.email || '',
           bio: '',
           skills: [],
-          hourly_rate: '',
           location: '',
           portfolio_url: '',
           avatar_url: session.user.image || ''
@@ -94,7 +144,6 @@ export default function Profile() {
 
       setPostedJobs(data || [])
       
-      // 統計情報を計算
       const total = data?.length || 0
       const active = data?.filter(job => job.status === '募集中').length || 0
       const completed = data?.filter(job => job.status === '完了').length || 0
@@ -117,11 +166,39 @@ export default function Profile() {
     }))
   }
 
+  // スキル追加
+  const addSkill = (skill) => {
+    if (!profile.skills.includes(skill)) {
+      setProfile(prev => ({
+        ...prev,
+        skills: [...prev.skills, skill]
+      }))
+    }
+  }
+
+  // スキル削除
+  const removeSkill = (skill) => {
+    setProfile(prev => ({
+      ...prev,
+      skills: prev.skills.filter(s => s !== skill)
+    }))
+  }
+
+  // スキル検索フィルター
+  const getFilteredSkills = () => {
+    if (!skillSearch) return []
+    
+    const allSkills = Object.values(skillsData).flat()
+    return allSkills.filter(skill => 
+      skill.toLowerCase().includes(skillSearch.toLowerCase()) &&
+      !profile.skills.includes(skill)
+    )
+  }
+
   const handleSave = async () => {
     try {
       setSaving(true)
 
-      // プロフィールが存在するか確認
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id')
@@ -129,14 +206,12 @@ export default function Profile() {
         .single()
 
       if (existingProfile) {
-        // 更新
         const { error } = await supabase
           .from('profiles')
           .update({
             full_name: profile.full_name,
             bio: profile.bio,
             skills: profile.skills,
-            hourly_rate: profile.hourly_rate ? parseInt(profile.hourly_rate) : null,
             location: profile.location,
             portfolio_url: profile.portfolio_url,
             updated_at: new Date().toISOString()
@@ -145,7 +220,6 @@ export default function Profile() {
 
         if (error) throw error
       } else {
-        // 新規作成
         const { error } = await supabase
           .from('profiles')
           .insert([
@@ -154,7 +228,6 @@ export default function Profile() {
               full_name: profile.full_name,
               bio: profile.bio,
               skills: profile.skills,
-              hourly_rate: profile.hourly_rate ? parseInt(profile.hourly_rate) : null,
               location: profile.location,
               portfolio_url: profile.portfolio_url,
               avatar_url: session.user.image || ''
@@ -165,7 +238,8 @@ export default function Profile() {
       }
 
       alert('プロフィールを保存しました！')
-      await loadProfile() // 再読み込み
+      await loadProfile()
+      setActiveTab('overview')
     } catch (error) {
       console.error('保存エラー:', error)
       alert('プロフィールの保存に失敗しました: ' + error.message)
@@ -300,7 +374,7 @@ export default function Profile() {
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-1 gap-6">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">スキル</h3>
                     <div className="bg-gray-50 p-4 rounded-lg min-h-[100px]">
@@ -315,14 +389,6 @@ export default function Profile() {
                       ) : (
                         <p className="text-gray-500">スキルを設定してください</p>
                       )}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">時給</h3>
-                    <div className="bg-gray-50 p-4 rounded-lg min-h-[100px] flex items-center justify-center">
-                      <p className="text-2xl font-bold text-green-600">
-                        {profile.hourly_rate ? `¥${parseInt(profile.hourly_rate).toLocaleString()}/時間` : '未設定'}
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -465,32 +531,132 @@ export default function Profile() {
                     />
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">時給（円）</label>
-                      <input
-                        type="number"
-                        name="hourly_rate"
-                        value={profile.hourly_rate}
-                        onChange={handleInputChange}
-                        min="0"
-                        step="100"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="3000"
-                      />
-                    </div>
+                  {/* 所在地（ドロップダウン） */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">所在地</label>
+                    <select
+                      name="location"
+                      value={profile.location}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">選択してください</option>
+                      {PREFECTURES.map((prefecture) => (
+                        <option key={prefecture} value={prefecture}>
+                          {prefecture}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">所在地</label>
+                  {/* スキル（タグ選択式） */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">スキル</label>
+
+                    {/* 選択中のスキル表示 */}
+                    {profile.skills.length > 0 && (
+                      <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="text-sm text-gray-600 mb-2">選択中のスキル ({profile.skills.length}個):</div>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.skills.map(skill => (
+                            <span
+                              key={skill}
+                              className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-sm font-medium"
+                            >
+                              {skill}
+                              <button
+                                type="button"
+                                onClick={() => removeSkill(skill)}
+                                className="ml-2 hover:bg-white/20 rounded-full p-0.5"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 検索バー */}
+                    <div className="mb-4">
                       <input
                         type="text"
-                        name="location"
-                        value={profile.location}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="東京都渋谷区"
+                        value={skillSearch}
+                        onChange={(e) => setSkillSearch(e.target.value)}
+                        placeholder="🔍 スキルを検索..."
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
+                      
+                      {/* 検索結果 */}
+                      {skillSearch && getFilteredSkills().length > 0 && (
+                        <div className="mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                          <div className="flex flex-wrap gap-2">
+                            {getFilteredSkills().slice(0, 10).map(skill => (
+                              <button
+                                key={skill}
+                                type="button"
+                                onClick={() => {
+                                  addSkill(skill)
+                                  setSkillSearch('')
+                                }}
+                                className="px-3 py-1 bg-gray-100 hover:bg-blue-100 text-gray-700 rounded-full text-sm transition-colors"
+                              >
+                                + {skill}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
+
+                    {/* よく使われるスキル */}
+                    <div className="mb-4">
+                      <div className="text-sm text-gray-600 mb-2">よく使われるスキル:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {popularSkills.filter(skill => !profile.skills.includes(skill)).map(skill => (
+                          <button
+                            key={skill}
+                            type="button"
+                            onClick={() => addSkill(skill)}
+                            className="px-3 py-1 bg-white hover:bg-blue-50 border border-gray-300 text-gray-700 rounded-full text-sm transition-colors"
+                          >
+                            + {skill}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* もっと見るボタン */}
+                    <button
+                      type="button"
+                      onClick={() => setShowAllSkills(!showAllSkills)}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      {showAllSkills ? '▲ 閉じる' : '▼ すべてのスキルを見る'}
+                    </button>
+
+                    {/* カテゴリ別全スキル */}
+                    {showAllSkills && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
+                        {Object.entries(skillsData).map(([category, skills]) => (
+                          <div key={category} className="mb-4 last:mb-0">
+                            <div className="text-sm font-semibold text-gray-700 mb-2">{category}</div>
+                            <div className="flex flex-wrap gap-2">
+                              {skills.filter(skill => !profile.skills.includes(skill)).map(skill => (
+                                <button
+                                  key={skill}
+                                  type="button"
+                                  onClick={() => addSkill(skill)}
+                                  className="px-3 py-1 bg-white hover:bg-blue-50 border border-gray-300 text-gray-700 rounded-full text-sm transition-colors"
+                                >
+                                  + {skill}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div>
