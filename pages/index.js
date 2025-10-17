@@ -83,9 +83,21 @@ export default function Home() {
             <div className="flex items-center space-x-4">
               {session ? (
                 <>
-                  <span className="text-gray-700">
-                    👤 {session.user.name || session.user.email}
-                  </span>
+                  <Link 
+                    href="/profile"
+                    className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors group"
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold group-hover:shadow-lg transition-shadow">
+                      {session.user.image ? (
+                        <img src={session.user.image} alt={session.user.name} className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        (session.user.name?.charAt(0) || session.user.email?.charAt(0) || 'U').toUpperCase()
+                      )}
+                    </div>
+                    <span className="font-medium">
+                      {session.user.name || session.user.email}
+                    </span>
+                  </Link>
                   <button
                     onClick={() => signOut()}
                     className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
