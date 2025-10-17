@@ -8,5 +8,19 @@ export default NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     })
   ],
+  callbacks: {
+    async session({ session, token }) {
+      if (session?.user) {
+        session.user.id = token.sub;
+      }
+      return session;
+    },
+    async jwt({ user, token }) {
+      if (user) {
+        token.uid = user.id;
+      }
+      return token;
+    },
+  },
   secret: process.env.NEXTAUTH_SECRET,
 })
