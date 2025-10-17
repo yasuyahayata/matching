@@ -2,6 +2,9 @@
 const path = require('path');
 
 const nextConfig = {
+  // experimental の appDir 設定を削除（Next.js 15では不要）
+  
+  // WebpackでのPath aliasの設定
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
     // Path aliasの設定
     config.resolve.alias = {
@@ -13,22 +16,7 @@ const nextConfig = {
       '@/components': path.resolve(__dirname, 'src/components'),
     };
 
-    // WebSocket関連のポリフィル（必要に応じて）
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        net: false,
-        tls: false,
-      };
-    }
-
     return config;
-  },
-  
-  // 開発時のWebSocket関連設定
-  experimental: {
-    esmExternals: false,
   },
 }
 

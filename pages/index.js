@@ -1,7 +1,7 @@
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { initializeTestUsers } from '../utils/userUtils'
+import { supabase } from '../lib/supabase'
 
 const categories = ['すべて', 'プログラミング', 'デザイン', '動画・映像', 'ライティング', 'マーケティング']
 
@@ -10,154 +10,121 @@ export default function Home() {
   const [selectedCategory, setSelectedCategory] = useState('すべて')
   const [searchTerm, setSearchTerm] = useState('')
   const [jobs, setJobs] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // ユーザーデータとlocalStorageから案件データを読み込み
-    const loadJobs = () => {
-      if (typeof window !== 'undefined') {
-        // テストユーザーを初期化
-        initializeTestUsers()
-        
-        const savedJobs = localStorage.getItem('crowdwork_jobs')
-        if (savedJobs) {
-          const parsedJobs = JSON.parse(savedJobs)
-          // 募集中の案件のみ表示
-          const activeJobs = parsedJobs.filter(job => job.status === '募集中')
-          setJobs(activeJobs)
-        }
-      }
-    }
-
     loadJobs()
   }, [])
+
+  const loadJobs = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('status', '募集中')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        throw error
+      }
+
+      setJobs(data || [])
+    } catch (error) {
+      console.error('案件取得エラー:', error)
+      alert('案件の取得に失敗しました: ' + error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredJobs = jobs.filter(job => {
     const matchesCategory = selectedCategory === 'すべて' || job.category === selectedCategory
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.description.toLowerCase().includes(searchTerm.toLowerCase())
+                         job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (job.skills && job.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase())))
+    
     return matchesCategory && matchesSearch
   })
 
-  // 金額を正しくフォーマットする関数
   const formatBudget = (budget) => {
-    if (!budget) return '要相談'
-    
-    // 既に正しい形式の場合はそのまま返す
-    if (typeof budget === 'string' && budget.includes('¥') && !budget.includes('¥¥')) {
-      return budget
-    }
-    
-    // 数値や文字列から¥と円を除去して数値部分のみ取得
-    const numericValue = budget.toString().replace(/[¥,円]/g, '')
-    
-    // 数値でない場合は元の値を返す
-    if (isNaN(numericValue)) return budget
-    
-    // 3桁区切りで表示
-    return `¥${parseInt(numericValue).toLocaleString()}`
+    if (!budget) return '予算相談'
+    return `¥${budget.toLocaleString()}`
+  }
+
+  const formatDeadline = (deadline) => {
+    if (!deadline) return '期限相談'
+    return new Date(deadline).toLocaleDateString('ja-JP')
+  }
+
+  const formatSkills = (skills) => {
+    if (!skills || skills.length === 0) return []
+    return skills
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* ヘッダー */}
-      <header className="bg-white shadow-sm border-b-2 border-gradient-to-r from-blue-100 to-purple-100">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
             <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              CrowdWork MVP
+              CrowdWork
             </Link>
             
-            {/* ナビゲーションメニュー */}
-            <nav className="hidden md:flex space-x-6">
-              <Link href="/" className="text-gray-700 hover:text-blue-600 font-medium">
-                案件一覧
-              </Link>
-              <Link href="/post-job" className="text-gray-700 hover:text-blue-600 font-medium">
-                案件投稿
-              </Link>
-              {session && (
-                <>
-                  <Link href="/my-applications" className="text-gray-700 hover:text-blue-600 font-medium">
-                    応募履歴・メッセージ
-                  </Link>
-                  <Link href="/profile" className="text-gray-700 hover:text-blue-600 font-medium">
-                    プロフィール
-                  </Link>
-                </>
-              )}
+            <nav className="hidden md:flex space-x-8">
+              <Link href="/" className="text-gray-700 hover:text-blue-600 transition-colors">案件一覧</Link>
+              <Link href="/post-job" className="text-gray-700 hover:text-blue-600 transition-colors">案件投稿</Link>
+              <Link href="/messages" className="text-gray-700 hover:text-blue-600 transition-colors">💬 メッセージ</Link>
             </nav>
 
             <div className="flex items-center space-x-4">
               {session ? (
-                <div className="flex items-center space-x-4">
-                  <span className="text-gray-700">
-                    {session.user?.name || session.user?.email}
-                  </span>
+                <>
+                  <Link href="/profile" className="text-gray-700 hover:text-blue-600 transition-colors">
+                    👤 {session.user.name || session.user.email}
+                  </Link>
                   <button
                     onClick={() => signOut()}
-                    className="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200"
+                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
                   >
                     ログアウト
                   </button>
-                </div>
+                </>
               ) : (
-                <div className="flex items-center space-x-2">
-                  <Link 
-                    href="/login"
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200"
-                  >
-                    ログイン
-                  </Link>
-                  <Link 
-                    href="/register"
-                    className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200"
-                  >
-                    新規登録
-                  </Link>
-                </div>
+                <Link href="/auth/signin" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                  ログイン
+                </Link>
               )}
             </div>
-          </div>
-
-          {/* モバイルメニュー */}
-          <div className="md:hidden mt-4">
-            <nav className="flex flex-wrap gap-4">
-              <Link href="/" className="text-gray-700 hover:text-blue-600 font-medium">
-                案件一覧
-              </Link>
-              <Link href="/post-job" className="text-gray-700 hover:text-blue-600 font-medium">
-                案件投稿
-              </Link>
-              {session && (
-                <>
-                  <Link href="/my-applications" className="text-gray-700 hover:text-blue-600 font-medium">
-                    応募履歴・メッセージ
-                  </Link>
-                  <Link href="/profile" className="text-gray-700 hover:text-blue-600 font-medium">
-                    プロフィール
-                  </Link>
-                </>
-              )}
-            </nav>
           </div>
         </div>
       </header>
 
       {/* メインコンテンツ */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* ヒーローセクション */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-            理想の案件と出会おう
+          <h1 className="text-4xl md:text-6xl font-bold text-gray-800 mb-4">
+            理想の案件と
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              出会おう
+            </span>
           </h1>
           <p className="text-xl text-gray-600 mb-8">
-            プロフェッショナルなフリーランサーと企業をつなぐプラットフォーム
+            フリーランサーとクライアントをつなぐプラットフォーム
           </p>
+          
+          {session && (
+            <Link href="/post-job" className="inline-block bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200">
+              📝 案件を投稿する
+            </Link>
+          )}
         </div>
 
         {/* 検索・フィルター */}
-        <div className="bg-white rounded-xl shadow-xl p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-8">
+          <div className="flex flex-col md:flex-row gap-4 items-center">
             <div className="flex-1">
               <input
                 type="text"
@@ -167,110 +134,114 @@ export default function Home() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            <Link 
-              href="/post-job"
-              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-200 font-medium text-center"
-            >
-              案件を投稿する
-            </Link>
-          </div>
-
-          {/* カテゴリフィルター */}
-          <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  selectedCategory === category
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
+            <div className="flex flex-wrap gap-2">
+              {categories.map(category => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-full font-medium transition-all duration-200 ${
+                    selectedCategory === category
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* 案件一覧 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredJobs.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <p className="text-gray-600 text-lg">表示する案件がありません</p>
-              <Link 
-                href="/post-job"
-                className="mt-4 inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-200"
-              >
-                最初の案件を投稿する
-              </Link>
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">
+            {selectedCategory === 'すべて' ? '全ての案件' : `${selectedCategory}の案件`}
+            <span className="text-sm font-normal text-gray-500 ml-2">
+              ({loading ? '読み込み中...' : `${filteredJobs.length}件`})
+            </span>
+          </h2>
+
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-600 mt-4">案件を読み込み中...</p>
+            </div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">案件が見つかりません</h3>
+              <p className="text-gray-600">別のカテゴリや検索条件をお試しください</p>
             </div>
           ) : (
-            filteredJobs.map((job) => (
-              <div key={job.id} className="bg-white rounded-xl shadow-xl p-6 hover:shadow-2xl transition-all duration-300 border-2 border-gray-100 hover:border-blue-200">
-                <div className="mb-4">
-                  <span className="bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                    {job.category}
-                  </span>
-                </div>
-                
-                <h3 className="text-xl font-semibold text-gray-800 mb-3 hover:text-blue-600 transition-colors">
-                  <Link href={`/job/${job.id}`}>
-                    {job.title}
-                  </Link>
-                </h3>
-                
-                <p className="text-gray-600 mb-4 line-clamp-3">
-                  {job.description}
-                </p>
-                
-                <div className="mb-4">
-                  <div className="flex flex-wrap gap-2">
-                    {job.skills?.slice(0, 3).map((skill, index) => (
-                      <span key={index} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm">
-                        {skill}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredJobs.map(job => (
+                <div key={job.id} className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                        {job.category}
                       </span>
-                    ))}
-                    {job.skills?.length > 3 && (
-                      <span className="text-gray-500 text-sm">+{job.skills.length - 3}</span>
+                      <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
+                        {job.experience_level}
+                      </span>
+                    </div>
+                    
+                    <h3 className="text-xl font-bold text-gray-800 mb-3 line-clamp-2">
+                      {job.title}
+                    </h3>
+                    
+                    <p className="text-gray-600 mb-4 line-clamp-3">
+                      {job.description}
+                    </p>
+                    
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-gray-700">
+                        <span className="font-medium">💰 予算:</span>
+                        <span className="ml-2">{formatBudget(job.budget)}</span>
+                      </div>
+                      <div className="flex items-center text-gray-700">
+                        <span className="font-medium">📅 納期:</span>
+                        <span className="ml-2">{formatDeadline(job.deadline)}</span>
+                      </div>
+                      <div className="flex items-center text-gray-700">
+                        <span className="font-medium">👤 投稿者:</span>
+                        <span className="ml-2">{job.client_name || job.client_email}</span>
+                      </div>
+                    </div>
+                    
+                    {formatSkills(job.skills).length > 0 && (
+                      <div className="mb-4">
+                        <span className="text-sm font-medium text-gray-700 mb-2 block">必要スキル:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {formatSkills(job.skills).slice(0, 3).map((skill, index) => (
+                            <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                              {skill}
+                            </span>
+                          ))}
+                          {formatSkills(job.skills).length > 3 && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                              +{formatSkills(job.skills).length - 3}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     )}
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">
+                        {new Date(job.created_at).toLocaleDateString('ja-JP')} 投稿
+                      </span>
+                      <Link href={`/job/${job.id}`} className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:shadow-lg transform hover:scale-105 transition-all duration-200">
+                        詳細を見る
+                      </Link>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="flex justify-between items-center text-sm text-gray-600 mb-4">
-                  <span className="font-medium text-green-600">
-                    {formatBudget(job.budget)}
-                  </span>
-                  <span>
-                    期限: {job.deadline ? new Date(job.deadline).toLocaleDateString('ja-JP') : '要相談'}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">
-                    提案数: {job.proposals || 0}件
-                  </span>
-                  <Link 
-                    href={`/job/${job.id}`}
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all duration-200 text-sm font-medium"
-                  >
-                    詳細を見る
-                  </Link>
-                </div>
-              </div>
-            ))
+              ))}
+            </div>
           )}
         </div>
       </main>
-
-      {/* フッター */}
-      <footer className="bg-white border-t border-gray-200 mt-16">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center text-gray-600">
-            <p>&copy; 2024 CrowdWork MVP. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }
