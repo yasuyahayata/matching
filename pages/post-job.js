@@ -4,6 +4,47 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+// スキル一覧（カテゴリ別）
+const skillsData = {
+  'プログラミング': [
+    'React', 'Vue.js', 'Angular', 'TypeScript', 'JavaScript', 
+    'Python', 'Java', 'PHP', 'Ruby', 'Go', 'Swift', 'Kotlin', 
+    'C#', 'Node.js', 'Django', 'Flask', 'Laravel', 'Ruby on Rails', 
+    'Next.js', 'Nuxt.js', 'Express.js'
+  ],
+  'デザイン': [
+    'Figma', 'Adobe XD', 'Sketch', 'Photoshop', 'Illustrator', 
+    'InDesign', 'After Effects', 'Premiere Pro', 'Blender', 
+    'Canva', 'UI/UX', 'グラフィックデザイン', 'ロゴデザイン'
+  ],
+  'マーケティング': [
+    'Google Analytics', 'SEO', 'SEM', 'SNS運用', 'Facebook広告', 
+    'Google広告', 'Instagram運用', 'Twitter運用', 'LINE広告',
+    'コンテンツマーケティング', 'メールマーケティング', 'アフィリエイト'
+  ],
+  'ライティング': [
+    'SEOライティング', 'コピーライティング', '技術文書作成', 
+    '翻訳（英日）', '翻訳（日英）', '校正', '編集', 'ブログ執筆',
+    'プレスリリース', 'シナリオ作成'
+  ],
+  '動画・映像': [
+    '動画編集', 'アニメーション', 'モーショングラフィックス',
+    'YouTube編集', 'TikTok編集', '撮影', '字幕作成', '音声編集'
+  ],
+  'その他': [
+    'Excel', 'PowerPoint', 'Word', 'SQL', 'Git', 'Docker', 
+    'AWS', 'Firebase', 'WordPress', 'Shopify', 'データ分析',
+    'プロジェクト管理', 'Slack', 'Notion'
+  ]
+}
+
+// よく使われるスキル（トップ表示用）
+const popularSkills = [
+  'React', 'Vue.js', 'TypeScript', 'JavaScript', 'Python', 
+  'PHP', 'Figma', 'Photoshop', 'Illustrator', 'WordPress',
+  'SEO', 'Google Analytics', 'Excel'
+]
+
 export default function PostJob() {
   const { data: session } = useSession()
   const router = useRouter()
@@ -11,12 +52,15 @@ export default function PostJob() {
   const [formData, setFormData] = useState({
     title: '',
     category: 'プログラミング',
-    budget: 50000, // 初期値: ¥50,000
+    budget: 50000,
     deadline: '',
     description: '',
-    skills: '',
+    skills: [], // 配列に変更
     experience_level: '初級'
   })
+  
+  const [skillSearch, setSkillSearch] = useState('')
+  const [showAllSkills, setShowAllSkills] = useState(false)
 
   const categories = ['プログラミング', 'デザイン', '動画・映像', 'ライティング', 'マーケティング']
   const experienceLevels = ['初級', '中級', '上級']
@@ -41,10 +85,8 @@ export default function PostJob() {
     }))
   }
 
-  // 予算スライダー専用ハンドラー
   const handleBudgetChange = (e) => {
     const value = parseInt(e.target.value)
-    // 1,000円単位に丸める
     const roundedValue = Math.round(value / 1000) * 1000
     setFormData(prev => ({
       ...prev,
@@ -52,21 +94,49 @@ export default function PostJob() {
     }))
   }
 
-  // 予算の直接入力ハンドラー
   const handleBudgetInputChange = (e) => {
-    const value = e.target.value.replace(/[^0-9]/g, '') // 数字のみ
+    const value = e.target.value.replace(/[^0-9]/g, '')
     const numValue = parseInt(value) || 5000
-    
-    // 最小値・最大値の制限
     let constrainedValue = Math.max(5000, Math.min(500000, numValue))
-    
-    // 1,000円単位に丸める
     constrainedValue = Math.round(constrainedValue / 1000) * 1000
-    
     setFormData(prev => ({
       ...prev,
       budget: constrainedValue
     }))
+  }
+
+  // スキル追加
+  const addSkill = (skill) => {
+    if (!formData.skills.includes(skill)) {
+      setFormData(prev => ({
+        ...prev,
+        skills: [...prev.skills, skill]
+      }))
+    }
+  }
+
+  // スキル削除
+  const removeSkill = (skill) => {
+    setFormData(prev => ({
+      ...prev,
+      skills: prev.skills.filter(s => s !== skill)
+    }))
+  }
+
+  // スキル検索フィルター
+  const getFilteredSkills = () => {
+    if (!skillSearch) return []
+    
+    const allSkills = Object.values(skillsData).flat()
+    return allSkills.filter(skill => 
+      skill.toLowerCase().includes(skillSearch.toLowerCase()) &&
+      !formData.skills.includes(skill)
+    )
+  }
+
+  // カテゴリ別の全スキル取得
+  const getAllSkillsByCategory = () => {
+    return skillsData
   }
 
   const handleSubmit = async (e) => {
@@ -74,13 +144,6 @@ export default function PostJob() {
     setLoading(true)
 
     try {
-      // スキルを配列に変換
-      const skillsArray = formData.skills
-        .split(',')
-        .map(skill => skill.trim())
-        .filter(skill => skill)
-
-      // Supabaseに新しい案件を挿入
       const { data, error } = await supabase
         .from('jobs')
         .insert([
@@ -90,7 +153,7 @@ export default function PostJob() {
             budget: formData.budget,
             deadline: formData.deadline || null,
             description: formData.description,
-            skills: skillsArray,
+            skills: formData.skills, // 既に配列
             experience_level: formData.experience_level,
             client_email: session.user.email,
             client_name: session.user.name || session.user.email,
@@ -169,13 +232,12 @@ export default function PostJob() {
               </select>
             </div>
 
-            {/* 予算スライダー（改良版） */}
+            {/* 予算スライダー */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 予算 <span className="text-red-500">*</span>
               </label>
               
-              {/* 現在の予算表示 */}
               <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">選択中の予算:</span>
@@ -185,7 +247,6 @@ export default function PostJob() {
                 </div>
               </div>
 
-              {/* スライダー */}
               <div className="mb-4">
                 <input
                   type="range"
@@ -206,7 +267,6 @@ export default function PostJob() {
                 </div>
               </div>
 
-              {/* 直接入力オプション */}
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">または直接入力:</span>
                 <input
@@ -250,6 +310,122 @@ export default function PostJob() {
               </select>
             </div>
 
+            {/* 必要なスキル（タグ選択式） */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                必要なスキル <span className="text-red-500">*</span>
+              </label>
+
+              {/* 選択中のスキル表示 */}
+              {formData.skills.length > 0 && (
+                <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-sm text-gray-600 mb-2">選択中のスキル ({formData.skills.length}個):</div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.skills.map(skill => (
+                      <span
+                        key={skill}
+                        className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-sm font-medium"
+                      >
+                        {skill}
+                        <button
+                          type="button"
+                          onClick={() => removeSkill(skill)}
+                          className="ml-2 hover:bg-white/20 rounded-full p-0.5"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 検索バー */}
+              <div className="mb-4">
+                <input
+                  type="text"
+                  value={skillSearch}
+                  onChange={(e) => setSkillSearch(e.target.value)}
+                  placeholder="🔍 スキルを検索..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                
+                {/* 検索結果 */}
+                {skillSearch && getFilteredSkills().length > 0 && (
+                  <div className="mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    <div className="flex flex-wrap gap-2">
+                      {getFilteredSkills().slice(0, 10).map(skill => (
+                        <button
+                          key={skill}
+                          type="button"
+                          onClick={() => {
+                            addSkill(skill)
+                            setSkillSearch('')
+                          }}
+                          className="px-3 py-1 bg-gray-100 hover:bg-blue-100 text-gray-700 rounded-full text-sm transition-colors"
+                        >
+                          + {skill}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* よく使われるスキル */}
+              <div className="mb-4">
+                <div className="text-sm text-gray-600 mb-2">よく使われるスキル:</div>
+                <div className="flex flex-wrap gap-2">
+                  {popularSkills.filter(skill => !formData.skills.includes(skill)).map(skill => (
+                    <button
+                      key={skill}
+                      type="button"
+                      onClick={() => addSkill(skill)}
+                      className="px-3 py-1 bg-white hover:bg-blue-50 border border-gray-300 text-gray-700 rounded-full text-sm transition-colors"
+                    >
+                      + {skill}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* もっと見るボタン */}
+              <button
+                type="button"
+                onClick={() => setShowAllSkills(!showAllSkills)}
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >
+                {showAllSkills ? '▲ 閉じる' : '▼ すべてのスキルを見る'}
+              </button>
+
+              {/* カテゴリ別全スキル */}
+              {showAllSkills && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
+                  {Object.entries(getAllSkillsByCategory()).map(([category, skills]) => (
+                    <div key={category} className="mb-4 last:mb-0">
+                      <div className="text-sm font-semibold text-gray-700 mb-2">{category}</div>
+                      <div className="flex flex-wrap gap-2">
+                        {skills.filter(skill => !formData.skills.includes(skill)).map(skill => (
+                          <button
+                            key={skill}
+                            type="button"
+                            onClick={() => addSkill(skill)}
+                            className="px-3 py-1 bg-white hover:bg-blue-50 border border-gray-300 text-gray-700 rounded-full text-sm transition-colors"
+                          >
+                            + {skill}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 mt-2">
+                ※ 必要なスキルを選択してください。検索バーで絞り込むこともできます。
+              </p>
+            </div>
+
             {/* 案件詳細 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -266,22 +442,6 @@ export default function PostJob() {
               />
             </div>
 
-            {/* 必要なスキル */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                必要なスキル
-              </label>
-              <input
-                type="text"
-                name="skills"
-                value={formData.skills}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="例：React, TypeScript, Figma（カンマ区切り）"
-              />
-              <p className="text-xs text-gray-500 mt-1">※ スキルをカンマ区切りで入力してください</p>
-            </div>
-
             {/* 送信ボタン */}
             <div className="flex space-x-4 pt-4">
               <button
@@ -293,7 +453,7 @@ export default function PostJob() {
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || formData.skills.length === 0}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 px-6 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? '投稿中...' : '案件を投稿'}
