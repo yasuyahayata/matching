@@ -2,7 +2,7 @@ import React, { useEffect } from "react"
 import { useSession, signIn, signOut } from "next-auth/react"
 import { useRouter } from "next/router"
 
-export function useAuth(redirectTo?: string) {
+export function useAuth(redirectTo) {
   const { data: session, status } = useSession()
   const router = useRouter()
 
@@ -24,11 +24,8 @@ export function useAuth(redirectTo?: string) {
   }
 }
 
-export function withAuth<P extends object>(
-  WrappedComponent: React.ComponentType<P>,
-  redirectTo = "/auth/signin"
-): React.ComponentType<P> {
-  return function AuthenticatedComponent(props: P) {
+export function withAuth(WrappedComponent, redirectTo = "/auth/signin") {
+  return function AuthenticatedComponent(props) {
     const { loading, authenticated } = useAuth(redirectTo)
 
     if (loading) {
