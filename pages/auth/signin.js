@@ -1,17 +1,7 @@
 import { getProviders, signIn, getSession } from "next-auth/react"
-import { GetServerSideProps } from "next"
 import Head from "next/head"
 
-interface Provider {
-  id: string
-  name: string
-}
-
-interface SignInProps {
-  providers: Record<string, Provider>
-}
-
-export default function SignIn({ providers }: SignInProps) {
+export default function SignIn({ providers }) {
   return (
     <>
       <Head>
@@ -53,7 +43,7 @@ export default function SignIn({ providers }: SignInProps) {
   )
 }
 
-export const getServerSideProps: GetServerSideProps = async (context) => {
+export async function getServerSideProps(context) {
   const providers = await getProviders()
   const session = await getSession(context)
 
