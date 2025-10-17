@@ -11,7 +11,7 @@ export default function PostJob() {
   const [formData, setFormData] = useState({
     title: '',
     category: 'プログラミング',
-    budget: '',
+    budget: 50000, // 初期値: ¥50,000
     deadline: '',
     description: '',
     skills: '',
@@ -27,7 +27,7 @@ export default function PostJob() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-4">ログインが必要です</h1>
           <p className="text-gray-600 mb-4">案件を投稿するにはログインしてください。</p>
-          <Link href="/auth/signin" className="text-blue-600 hover:underline">ログインページへ</Link>
+          <Link href="/" className="text-blue-600 hover:underline">トップページへ</Link>
         </div>
       </div>
     )
@@ -38,6 +38,34 @@ export default function PostJob() {
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }))
+  }
+
+  // 予算スライダー専用ハンドラー
+  const handleBudgetChange = (e) => {
+    const value = parseInt(e.target.value)
+    // 1,000円単位に丸める
+    const roundedValue = Math.round(value / 1000) * 1000
+    setFormData(prev => ({
+      ...prev,
+      budget: roundedValue
+    }))
+  }
+
+  // 予算の直接入力ハンドラー
+  const handleBudgetInputChange = (e) => {
+    const value = e.target.value.replace(/[^0-9]/g, '') // 数字のみ
+    const numValue = parseInt(value) || 5000
+    
+    // 最小値・最大値の制限
+    let constrainedValue = Math.max(5000, Math.min(500000, numValue))
+    
+    // 1,000円単位に丸める
+    constrainedValue = Math.round(constrainedValue / 1000) * 1000
+    
+    setFormData(prev => ({
+      ...prev,
+      budget: constrainedValue
     }))
   }
 
@@ -59,7 +87,7 @@ export default function PostJob() {
           {
             title: formData.title,
             category: formData.category,
-            budget: parseInt(formData.budget) || null,
+            budget: formData.budget,
             deadline: formData.deadline || null,
             description: formData.description,
             skills: skillsArray,
@@ -98,12 +126,6 @@ export default function PostJob() {
               <Link href="/" className="text-gray-700 hover:text-blue-600 transition-colors">ホーム</Link>
               <Link href="/profile" className="text-gray-700 hover:text-blue-600 transition-colors">プロフィール</Link>
               <Link href="/messages" className="text-gray-700 hover:text-blue-600 transition-colors">💬 メッセージ</Link>
-              <button
-                onClick={() => router.push('/auth/signin')}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                ログアウト
-              </button>
             </div>
           </div>
         </div>
@@ -112,8 +134,9 @@ export default function PostJob() {
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl p-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">案件を投稿</h1>
-          
+
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* 案件タイトル */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 案件タイトル <span className="text-red-500">*</span>
@@ -129,6 +152,7 @@ export default function PostJob() {
               />
             </div>
 
+            {/* カテゴリ */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 カテゴリ <span className="text-red-500">*</span>
@@ -145,21 +169,57 @@ export default function PostJob() {
               </select>
             </div>
 
+            {/* 予算スライダー（改良版） */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                予算（円）
+                予算 <span className="text-red-500">*</span>
               </label>
-              <input
-                type="number"
-                name="budget"
-                value={formData.budget}
-                onChange={handleInputChange}
-                min="0"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="例：50000"
-              />
+              
+              {/* 現在の予算表示 */}
+              <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">選択中の予算:</span>
+                  <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                    ¥{formData.budget.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* スライダー */}
+              <div className="mb-4">
+                <input
+                  type="range"
+                  min="5000"
+                  max="500000"
+                  step="1000"
+                  value={formData.budget}
+                  onChange={handleBudgetChange}
+                  className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((formData.budget - 5000) / (500000 - 5000)) * 100}%, #e5e7eb ${((formData.budget - 5000) / (500000 - 5000)) * 100}%, #e5e7eb 100%)`
+                  }}
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-2">
+                  <span>¥5,000</span>
+                  <span>¥250,000</span>
+                  <span>¥500,000</span>
+                </div>
+              </div>
+
+              {/* 直接入力オプション */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">または直接入力:</span>
+                <input
+                  type="text"
+                  value={`¥${formData.budget.toLocaleString()}`}
+                  onChange={handleBudgetInputChange}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">※ 1,000円単位で自動調整されます（最低¥5,000〜最高¥500,000）</p>
             </div>
 
+            {/* 納期 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 納期
@@ -173,6 +233,7 @@ export default function PostJob() {
               />
             </div>
 
+            {/* 経験レベル */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 経験レベル
@@ -189,6 +250,7 @@ export default function PostJob() {
               </select>
             </div>
 
+            {/* 案件詳細 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 案件詳細 <span className="text-red-500">*</span>
@@ -198,12 +260,13 @@ export default function PostJob() {
                 value={formData.description}
                 onChange={handleInputChange}
                 required
-                rows={6}
+                rows="6"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="案件の詳細な説明を記入してください..."
+                placeholder="案件の詳細を記入してください"
               />
             </div>
 
+            {/* 必要なスキル */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 必要なスキル
@@ -214,18 +277,26 @@ export default function PostJob() {
                 value={formData.skills}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="例：HTML, CSS, JavaScript, React（カンマ区切りで入力）"
+                placeholder="例：React, TypeScript, Figma（カンマ区切り）"
               />
-              <p className="text-sm text-gray-500 mt-1">複数のスキルはカンマ（,）で区切って入力してください</p>
+              <p className="text-xs text-gray-500 mt-1">※ スキルをカンマ区切りで入力してください</p>
             </div>
 
-            <div className="flex justify-center">
+            {/* 送信ボタン */}
+            <div className="flex space-x-4 pt-4">
+              <button
+                type="button"
+                onClick={() => router.push('/')}
+                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg font-medium transition-colors"
+              >
+                キャンセル
+              </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 px-6 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? '投稿中...' : '案件を投稿する'}
+                {loading ? '投稿中...' : '案件を投稿'}
               </button>
             </div>
           </form>
