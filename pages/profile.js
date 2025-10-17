@@ -98,7 +98,7 @@ export default function Profile() {
         .from('profiles')
         .select('*')
         .eq('email', session.user.email)
-        .single()
+        .maybeSingle()
 
       if (error && error.code !== 'PGRST116') {
         console.error('プロフィール読み込みエラー:', error)
@@ -199,13 +199,20 @@ export default function Profile() {
     try {
       setSaving(true)
 
-      const { data: existingProfile } = await supabase
+      // プロフィールが存在するか確認
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, email')
         .eq('email', session.user.email)
-        .single()
+        .maybeSingle()
+
+      if (fetchError) {
+        console.error('プロフィール確認エラー:', fetchError)
+        throw fetchError
+      }
 
       if (existingProfile) {
+        // 更新
         const { error } = await supabase
           .from('profiles')
           .update({
@@ -220,10 +227,22 @@ export default function Profile() {
 
         if (error) throw error
       } else {
+        // 新規作成 - auth.usersからIDを取得
+        const { data: authUser, error: authError } = await supabase.auth.getUser()
+        
+        if (authError) throw authError
+        
+        const userId = authUser.user?.id
+        
+        if (!userId) {
+          throw new Error('ユーザーIDが取得できませんでした')
+        }
+
         const { error } = await supabase
           .from('profiles')
           .insert([
             {
+              id: userId, // auth.usersのIDを使用
               email: profile.email,
               full_name: profile.full_name,
               bio: profile.bio,
