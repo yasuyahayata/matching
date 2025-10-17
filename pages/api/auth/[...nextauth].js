@@ -75,10 +75,11 @@ export default NextAuth({
     }
   },
   
-  pages: {
-    signIn: '/login',
-    error: '/login',
-  },
+  // ❌ この部分を削除（/loginページは存在しないため）
+  // pages: {
+  //   signIn: '/login',
+  //   error: '/login',
+  // },
   
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',
