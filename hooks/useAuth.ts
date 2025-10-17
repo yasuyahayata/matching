@@ -27,8 +27,8 @@ export function useAuth(redirectTo?: string) {
 export function withAuth<P extends object>(
   WrappedComponent: React.ComponentType<P>,
   redirectTo = "/auth/signin"
-) {
-  return function AuthenticatedComponent(props: P) {
+): React.ComponentType<P> {
+  const AuthenticatedComponent = (props: P) => {
     const { loading, authenticated } = useAuth(redirectTo)
 
     if (loading) {
@@ -45,4 +45,6 @@ export function withAuth<P extends object>(
 
     return <WrappedComponent {...props} />
   }
+
+  return AuthenticatedComponent
 }
