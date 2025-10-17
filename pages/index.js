@@ -1,4 +1,4 @@
-import { useSession, signOut } from 'next-auth/react'
+import { useSession, signOut, signIn } from 'next-auth/react'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
@@ -245,3 +245,4 @@ export default function Home() {
     </div>
   )
 }
+
