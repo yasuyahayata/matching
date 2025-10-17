@@ -227,22 +227,12 @@ export default function Profile() {
 
         if (error) throw error
       } else {
-        // 新規作成 - auth.usersからIDを取得
-        const { data: authUser, error: authError } = await supabase.auth.getUser()
-        
-        if (authError) throw authError
-        
-        const userId = authUser.user?.id
-        
-        if (!userId) {
-          throw new Error('ユーザーIDが取得できませんでした')
-        }
-
+        // 新規作成（idは自動生成される）
         const { error } = await supabase
           .from('profiles')
           .insert([
             {
-              id: userId, // auth.usersのIDを使用
+              // idは削除（自動生成される）
               email: profile.email,
               full_name: profile.full_name,
               bio: profile.bio,
