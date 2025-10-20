@@ -1,200 +1,242 @@
-import { useSession, signIn } from 'next-auth/react'
-import { useRouter } from 'next/router'
-import Link from 'next/link'
-import { useState, useEffect } from 'react'
-import { supabase } from '../../../lib/supabase'
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
+import { useSession } from 'next-auth/react';
+import Layout from '../../../components/Layout';
+import styles from '../../../styles/Applications.module.css';
 
-export default function JobApplications() {
-  const { data: session } = useSession()
-  const router = useRouter()
-  const { id } = router.query
-  const [job, setJob] = useState(null)
-  const [applications, setApplications] = useState([])
-  const [loading, setLoading] = useState(true)
+export default function ApplicationsPage() {
+  const router = useRouter();
+  const { id } = router.query; // 案件ID
+  const { data: session, status } = useSession();
+  
+  const [job, setJob] = useState(null);
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [processingId, setProcessingId] = useState(null); // 処理中の応募ID
 
+  // データ取得
   useEffect(() => {
     if (id && session) {
-      loadData()
+      fetchJobAndApplications();
     }
-  }, [id, session])
+  }, [id, session]);
 
-  const loadData = async () => {
+  const fetchJobAndApplications = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       
-      const jobId = parseInt(id, 10)
-
       // 案件情報を取得
-      const { data: jobData, error: jobError } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('id', jobId)
-        .single()
-
-      if (jobError) throw jobError
-
-      // 自分の案件かチェック
+      const jobRes = await fetch(`/api/jobs/${id}`);
+      if (!jobRes.ok) throw new Error('案件の取得に失敗しました');
+      const jobData = await jobRes.json();
+      
+      // クライアント本人か確認
       if (jobData.client_email !== session.user.email) {
-        alert('この案件の応募者一覧を見る権限がありません')
-        router.push('/')
-        return
+        setError('この案件の応募者を見る権限がありません');
+        setLoading(false);
+        return;
+      }
+      
+      setJob(jobData);
+      
+      // 応募一覧を取得
+      const appsRes = await fetch(`/api/jobs/${id}/applications`);
+      if (!appsRes.ok) throw new Error('応募の取得に失敗しました');
+      const appsData = await appsRes.json();
+      
+      setApplications(appsData);
+      setLoading(false);
+      
+    } catch (err) {
+      console.error('データ取得エラー:', err);
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  // ステータス更新処理
+  const handleStatusUpdate = async (applicationId, newStatus) => {
+    const confirmMessage = newStatus === 'approved' 
+      ? 'この応募を承認しますか？' 
+      : 'この応募を却下しますか？';
+    
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      setProcessingId(applicationId);
+      
+      const res = await fetch(`/api/applications/${applicationId}/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'ステータスの更新に失敗しました');
       }
 
-      setJob(jobData)
-
-      // 応募一覧を取得
-      const { data: applicationsData, error: applicationsError } = await supabase
-        .from('applications')
-        .select('*')
-        .eq('job_id', jobId)
-        .order('created_at', { ascending: false })
-
-      if (applicationsError) throw applicationsError
-
-      setApplications(applicationsData || [])
-    } catch (error) {
-      console.error('データ取得エラー:', error)
-      alert('データの取得に失敗しました')
+      // 成功したら一覧を再取得
+      alert(newStatus === 'approved' ? '応募を承認しました' : '応募を却下しました');
+      await fetchJobAndApplications();
+      
+    } catch (err) {
+      console.error('ステータス更新エラー:', err);
+      alert(err.message);
     } finally {
-      setLoading(false)
+      setProcessingId(null);
     }
-  }
+  };
 
-  const formatBudget = (budget) => {
-    if (!budget) return '予算相談'
-    return `¥${budget.toLocaleString()}`
-  }
-
-  const formatDate = (date) => {
-    if (!date) return '期限相談'
-    return new Date(date).toLocaleDateString('ja-JP', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
-
+  // ステータスバッジのスタイル
   const getStatusBadge = (status) => {
-    const styles = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800'
-    }
-    const labels = {
-      pending: '審査中',
-      approved: '承認済み',
-      rejected: '却下'
-    }
+    const statusConfig = {
+      pending: { label: '審査中', className: styles.statusPending },
+      approved: { label: '承認済み', className: styles.statusApproved },
+      rejected: { label: '却下', className: styles.statusRejected },
+    };
+    
+    const config = statusConfig[status] || statusConfig.pending;
+    
     return (
-      <span className={`px-3 py-1 rounded-full text-sm font-medium ${styles[status] || styles.pending}`}>
-        {labels[status] || status}
+      <span className={`${styles.statusBadge} ${config.className}`}>
+        {config.label}
       </span>
-    )
+    );
+  };
+
+  // ログインチェック
+  if (status === 'loading' || loading) {
+    return (
+      <Layout>
+        <div className={styles.container}>
+          <p>読み込み中...</p>
+        </div>
+      </Layout>
+    );
   }
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">ログインが必要です</h1>
-          <button
-            onClick={() => signIn('google')}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-8 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg font-semibold"
-          >
-            Googleでログイン
-          </button>
+      <Layout>
+        <div className={styles.container}>
+          <p>ログインが必要です</p>
         </div>
-      </div>
-    )
+      </Layout>
+    );
   }
 
-  if (loading) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600">読み込み中...</p>
+      <Layout>
+        <div className={styles.container}>
+          <p className={styles.error}>{error}</p>
+          <button onClick={() => router.back()} className={styles.backButton}>
+            戻る
+          </button>
         </div>
-      </div>
-    )
+      </Layout>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* ナビゲーション */}
-      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              CrowdWork
-            </Link>
-            <div className="flex items-center space-x-6">
-              <Link href={`/job/${id}`} className="text-gray-700 hover:text-blue-600 transition-colors">← 案件詳細に戻る</Link>
-              <Link href="/" className="text-gray-700 hover:text-blue-600 transition-colors">案件一覧</Link>
-              <Link href="/profile" className="text-gray-700 hover:text-blue-600 transition-colors">プロフィール</Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 案件情報 */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">{job?.title}</h1>
-          <div className="flex gap-4 text-sm text-gray-600">
-            <span>予算: {formatBudget(job?.budget)}</span>
-            <span>納期: {formatDate(job?.deadline)}</span>
-          </div>
+    <Layout>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h1>応募者一覧</h1>
+          <button onClick={() => router.back()} className={styles.backButton}>
+            ← 案件詳細に戻る
+          </button>
         </div>
 
-        {/* 応募者一覧 */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-800">応募者一覧</h2>
-            <span className="text-sm text-gray-600">全 {applications.length} 件</span>
+        {job && (
+          <div className={styles.jobInfo}>
+            <h2>{job.title}</h2>
+            <p className={styles.jobMeta}>
+              予算: ¥{job.budget?.toLocaleString()} | 
+              締切: {new Date(job.deadline).toLocaleDateString('ja-JP')}
+            </p>
           </div>
+        )}
 
-          {applications.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">まだ応募がありません</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {applications.map((application) => (
-                <div key={application.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800">{application.freelancer_name || '名前未設定'}</h3>
-                      <p className="text-sm text-gray-500">{application.freelancer_email}</p>
-                    </div>
-                    {getStatusBadge(application.status)}
+        {applications.length === 0 ? (
+          <div className={styles.noApplications}>
+            <p>まだ応募がありません</p>
+          </div>
+        ) : (
+          <div className={styles.applicationsList}>
+            {applications.map((app) => (
+              <div key={app.id} className={styles.applicationCard}>
+                <div className={styles.cardHeader}>
+                  <div>
+                    <h3>{app.freelancer_name}</h3>
+                    <p className={styles.email}>{app.freelancer_email}</p>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <p className="text-sm text-gray-600">提案金額</p>
-                      <p className="text-lg font-bold text-blue-600">{formatBudget(application.proposed_budget)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">希望納期</p>
-                      <p className="text-lg font-semibold text-gray-800">{formatDate(application.estimated_duration)}</p>
-                    </div>
-                  </div>
-
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-600 mb-2">提案メッセージ</p>
-                    <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">{application.message}</p>
-                  </div>
-
-                  <div className="text-xs text-gray-500">
-                    応募日時: {new Date(application.created_at).toLocaleString('ja-JP')}
-                  </div>
+                  {getStatusBadge(app.status)}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+
+                <div className={styles.cardBody}>
+                  <div className={styles.proposalInfo}>
+                    <div>
+                      <span className={styles.label}>提案予算:</span>
+                      <span className={styles.value}>¥{app.proposed_budget?.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className={styles.label}>見積期間:</span>
+                      <span className={styles.value}>{app.estimated_duration}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.message}>
+                    <span className={styles.label}>メッセージ:</span>
+                    <p>{app.message}</p>
+                  </div>
+
+                  <p className={styles.appliedDate}>
+                    応募日時: {new Date(app.created_at).toLocaleString('ja-JP')}
+                  </p>
+                </div>
+
+                {/* 承認/却下ボタン */}
+                {app.status === 'pending' && (
+                  <div className={styles.actionButtons}>
+                    <button
+                      onClick={() => handleStatusUpdate(app.id, 'approved')}
+                      disabled={processingId === app.id}
+                      className={styles.approveButton}
+                    >
+                      {processingId === app.id ? '処理中...' : '✓ 承認する'}
+                    </button>
+                    <button
+                      onClick={() => handleStatusUpdate(app.id, 'rejected')}
+                      disabled={processingId === app.id}
+                      className={styles.rejectButton}
+                    >
+                      {processingId === app.id ? '処理中...' : '✗ 却下する'}
+                    </button>
+                  </div>
+                )}
+
+                {/* 承認/却下済みの場合はメッセージ表示 */}
+                {app.status === 'approved' && (
+                  <div className={styles.statusMessage}>
+                    この応募は承認されています
+                  </div>
+                )}
+                {app.status === 'rejected' && (
+                  <div className={styles.statusMessage}>
+                    この応募は却下されています
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
-  )
+    </Layout>
+  );
 }
