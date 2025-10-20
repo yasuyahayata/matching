@@ -12,6 +12,15 @@ export default function JobDetail() {
   const [loading, setLoading] = useState(true)
   const [clientProfile, setClientProfile] = useState(null)
 
+  // 応募フォームの状態管理
+  const [showApplyModal, setShowApplyModal] = useState(false)
+  const [applyForm, setApplyForm] = useState({
+    proposed_budget: '',
+    estimated_duration: '',
+    message: ''
+  })
+  const [applying, setApplying] = useState(false)
+
   useEffect(() => {
     if (id) {
       loadJobDetail()
@@ -32,7 +41,7 @@ export default function JobDetail() {
       const { data: jobData, error: jobError } = await supabase
         .from('jobs')
         .select('*')
-        .eq('id', jobId) // 整数に変換したIDを使用
+        .eq('id', jobId)
         .single()
 
       console.log('案件データ:', jobData)
@@ -98,8 +107,43 @@ export default function JobDetail() {
       return
     }
 
-    // Phase 8で実装予定
-    alert('応募機能は次のPhaseで実装します！')
+    setShowApplyModal(true)
+  }
+
+  const handleApplySubmit = async (e) => {
+    e.preventDefault()
+    
+    if (!applyForm.proposed_budget || !applyForm.estimated_duration || !applyForm.message) {
+      alert('すべての項目を入力してください')
+      return
+    }
+
+    try {
+      setApplying(true)
+
+      const { data, error } = await supabase
+        .from('applications')
+        .insert([{
+          job_id: job.id,
+          freelancer_email: session.user.email,
+          freelancer_name: session.user.name,
+          proposed_budget: parseInt(applyForm.proposed_budget),
+          estimated_duration: applyForm.estimated_duration,
+          message: applyForm.message,
+          status: 'pending'
+        }])
+
+      if (error) throw error
+
+      alert('応募が完了しました！')
+      setShowApplyModal(false)
+      setApplyForm({ proposed_budget: '', estimated_duration: '', message: '' })
+    } catch (error) {
+      console.error('応募エラー:', error)
+      alert('応募に失敗しました: ' + error.message)
+    } finally {
+      setApplying(false)
+    }
   }
 
   const handleMessage = () => {
@@ -295,6 +339,105 @@ export default function JobDetail() {
           </div>
         </div>
       </div>
+
+      {/* 応募モーダル */}
+      {showApplyModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">案件に応募する</h2>
+                <button
+                  onClick={() => setShowApplyModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+
+              <form onSubmit={handleApplySubmit} className="space-y-6">
+                {/* 案件情報の表示 */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-800 mb-2">{job.title}</h3>
+                  <div className="flex gap-4 text-sm text-gray-600">
+                    <span>予算: {formatBudget(job.budget)}</span>
+                    <span>納期: {formatDate(job.deadline)}</span>
+                  </div>
+                </div>
+
+                {/* 提案金額 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    提案金額 <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">¥</span>
+                    <input
+                      type="number"
+                      required
+                      min="1000"
+                      step="1000"
+                      value={applyForm.proposed_budget}
+                      onChange={(e) => setApplyForm({ ...applyForm, proposed_budget: e.target.value })}
+                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="50000"
+                    />
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500">クライアントの予算: {formatBudget(job.budget)}</p>
+                </div>
+
+                {/* 希望納期 */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    希望納期 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={applyForm.estimated_duration}
+                    onChange={(e) => setApplyForm({ ...applyForm, estimated_duration: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">クライアントの希望納期: {formatDate(job.deadline)}</p>
+                </div>
+
+                {/* 提案メッセージ */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    提案メッセージ・自己PR <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    required
+                    rows="6"
+                    value={applyForm.message}
+                    onChange={(e) => setApplyForm({ ...applyForm, message: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="あなたの経験、スキル、この案件への提案内容を記入してください"
+                  ></textarea>
+                </div>
+
+                {/* ボタン */}
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowApplyModal(false)}
+                    className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={applying}
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {applying ? '送信中...' : '応募する'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
