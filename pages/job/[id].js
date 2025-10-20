@@ -290,9 +290,15 @@ export default function JobDetail() {
 
           {isOwnJob && (
             <div className="pt-6 border-t border-gray-200">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                 <p className="text-blue-800 font-medium">これはあなたが投稿した案件です</p>
               </div>
+              <Link 
+                href={`/job/${job.id}/applications`}
+                className="block w-full bg-gradient-to-r from-green-600 to-teal-600 text-white py-4 px-8 rounded-lg hover:from-green-700 hover:to-teal-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg text-center"
+              >
+                📋 応募者一覧を見る
+              </Link>
             </div>
           )}
         </div>
