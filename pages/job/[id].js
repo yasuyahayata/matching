@@ -21,31 +21,48 @@ export default function JobDetail() {
   const loadJobDetail = async () => {
     try {
       setLoading(true)
+      
+      // URLから取得したidを整数に変換
+      const jobId = parseInt(id, 10)
+      
+      console.log('案件ID（文字列）:', id)
+      console.log('案件ID（整数）:', jobId)
 
       // 案件情報を取得
       const { data: jobData, error: jobError } = await supabase
         .from('jobs')
         .select('*')
-        .eq('id', id)
+        .eq('id', jobId) // 整数に変換したIDを使用
         .single()
 
-      if (jobError) throw jobError
+      console.log('案件データ:', jobData)
+      console.log('エラー:', jobError)
+
+      if (jobError) {
+        console.error('案件取得エラー:', jobError)
+        throw jobError
+      }
 
       setJob(jobData)
 
       // クライアントのプロフィールを取得
-      if (jobData.client_email) {
-        const { data: profileData } = await supabase
+      if (jobData?.client_email) {
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('email', jobData.client_email)
-          .single()
+          .maybeSingle()
+
+        if (profileError) {
+          console.error('プロフィール取得エラー:', profileError)
+        }
 
         setClientProfile(profileData)
       }
     } catch (error) {
       console.error('案件詳細取得エラー:', error)
-      alert('案件情報の取得に失敗しました')
+      alert('案件情報の取得に失敗しました: ' + error.message)
+      setJob(null)
     } finally {
       setLoading(false)
     }
@@ -102,6 +119,7 @@ export default function JobDetail() {
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
           <p className="mt-4 text-gray-600">読み込み中...</p>
+          <p className="mt-2 text-sm text-gray-500">案件ID: {id || '取得中...'}</p>
         </div>
       </div>
     )
@@ -112,6 +130,7 @@ export default function JobDetail() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-4">案件が見つかりませんでした</h1>
+          <p className="text-gray-600 mb-4">案件ID: {id}</p>
           <Link href="/" className="text-blue-600 hover:underline">トップページに戻る</Link>
         </div>
       </div>
