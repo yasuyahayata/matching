@@ -221,12 +221,22 @@ export default function ApplicationsPage() {
                   </div>
                 )}
 
-                {/* 承認/却下済みの場合はメッセージ表示 */}
+                {/* 承認済みの場合はチャットボタン表示 */}
                 {app.status === 'approved' && (
-                  <div className={styles.statusMessage}>
-                    この応募は承認されています
+                  <div className={styles.approvedSection}>
+                    <div className={styles.statusMessage}>
+                      この応募は承認されています
+                    </div>
+                    <button
+                      onClick={() => router.push(`/chat/${app.id}`)}
+                      className={styles.chatButton}
+                    >
+                      💬 チャットを開く
+                    </button>
                   </div>
                 )}
+
+                {/* 却下済みの場合はメッセージ表示 */}
                 {app.status === 'rejected' && (
                   <div className={styles.statusMessage}>
                     この応募は却下されています

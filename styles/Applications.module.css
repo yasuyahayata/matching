@@ -232,13 +232,49 @@
 
 /* ステータスメッセージ */
 .statusMessage {
-  margin-top: 1rem;
   padding: 1rem;
   background-color: #e9ecef;
   border-radius: 6px;
   text-align: center;
   color: #495057;
   font-weight: 500;
+}
+
+/* 承認済みセクション */
+.approvedSection {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* チャットボタン */
+.chatButton {
+  padding: 0.75rem 1.5rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.chatButton:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.chatButton:active {
+  transform: translateY(0);
 }
 
 .error {
