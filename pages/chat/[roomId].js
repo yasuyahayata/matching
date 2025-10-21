@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
 import Layout from '../../components/Layout'
@@ -15,6 +15,22 @@ export default function ChatRoom() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
+  const [notificationPermission, setNotificationPermission] = useState('default')
+  
+  const lastMessageCountRef = useRef(0)
+
+  // 通知権限をリクエスト
+  useEffect(() => {
+    if ('Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+          setNotificationPermission(permission)
+        })
+      } else {
+        setNotificationPermission(Notification.permission)
+      }
+    }
+  }, [])
 
   // チャットルーム情報とメッセージを取得
   useEffect(() => {
@@ -61,9 +77,44 @@ export default function ChatRoom() {
         throw new Error('メッセージの取得に失敗しました')
       }
       const data = await res.json()
+      
+      // 新しいメッセージがあり、それが相手からのメッセージの場合に通知
+      if (data.length > lastMessageCountRef.current && lastMessageCountRef.current > 0) {
+        const newMessages = data.slice(lastMessageCountRef.current)
+        newMessages.forEach(msg => {
+          // 自分以外のメッセージで通知
+          if (msg.sender_email !== session?.user?.email) {
+            showNotification(msg.sender_name, msg.message)
+          }
+        })
+      }
+      
+      lastMessageCountRef.current = data.length
       setMessages(data)
     } catch (err) {
       console.error('メッセージ取得エラー:', err)
+    }
+  }
+
+  const showNotification = (senderName, message) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      // ページが非アクティブの時のみ通知を表示
+      if (document.hidden) {
+        const notification = new Notification(`💬 ${senderName}からメッセージ`, {
+          body: message.length > 50 ? message.substring(0, 50) + '...' : message,
+          icon: '/favicon.ico',
+          tag: 'chat-message',
+          requireInteraction: false
+        })
+
+        notification.onclick = () => {
+          window.focus()
+          notification.close()
+        }
+
+        // 5秒後に自動で閉じる
+        setTimeout(() => notification.close(), 5000)
+      }
     }
   }
 
@@ -153,6 +204,14 @@ export default function ChatRoom() {
           </button>
           <h1>💬 {otherUser.name}とのチャット</h1>
         </div>
+
+        {notificationPermission === 'default' && (
+          <div style={{ padding: '1rem', backgroundColor: '#fff3cd', borderBottom: '1px solid #ffc107' }}>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: '#856404' }}>
+              💡 新しいメッセージの通知を受け取るには、ブラウザの通知を許可してください
+            </p>
+          </div>
+        )}
 
         <div className={styles.messagesContainer}>
           {messages.length === 0 ? (
