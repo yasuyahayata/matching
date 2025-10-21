@@ -12,30 +12,33 @@ export default function Layout({ children }) {
           <Link href="/" className={styles.logo}>
             <h1>Crowd MVP</h1>
           </Link>
-          
+
           <nav className={styles.nav}>
             <Link href="/" className={styles.navLink}>
               案件一覧
             </Link>
-            
+
             {session ? (
               <>
-                <Link href="/profile" className={styles.navLink}>
+                <Link href="/messages" className={styles.navLink}>
+                  💬 メッセージ
+                </Link>
+                <Link href="/profile" className={styles.navLink}>   
                   プロフィール
                 </Link>
                 <span className={styles.userInfo}>
                   {session.user.name || session.user.email}
                 </span>
-                <button 
-                  onClick={() => signOut()} 
+                <button
+                  onClick={() => signOut()}
                   className={styles.authButton}
                 >
                   ログアウト
                 </button>
               </>
             ) : (
-              <button 
-                onClick={() => signIn('google')} 
+              <button
+                onClick={() => signIn('google')}
                 className={styles.authButton}
               >
                 ログイン

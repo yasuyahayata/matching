@@ -31,13 +31,11 @@ export default function JobDetail() {
     try {
       setLoading(true)
       
-      // URLから取得したidを整数に変換
       const jobId = parseInt(id, 10)
       
       console.log('案件ID（文字列）:', id)
       console.log('案件ID（整数）:', jobId)
 
-      // 案件情報を取得
       const { data: jobData, error: jobError } = await supabase
         .from('jobs')
         .select('*')
@@ -54,7 +52,6 @@ export default function JobDetail() {
 
       setJob(jobData)
 
-      // クライアントのプロフィールを取得
       if (jobData?.client_email) {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
@@ -146,15 +143,39 @@ export default function JobDetail() {
     }
   }
 
-  const handleMessage = () => {
+  // 💬 新機能: チャット開始
+  const handleStartChat = async () => {
     if (!session) {
-      alert('メッセージを送るにはログインが必要です')
+      alert('チャットするにはログインが必要です')
       signIn('google')
       return
     }
 
-    // Phase 10で実装予定
-    alert('メッセージ機能は後のPhaseで実装します！')
+    try {
+      // チャットルームを作成または取得
+      const res = await fetch('/api/chat-rooms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          otherUserEmail: job.client_email,
+          otherUserName: job.client_name || clientProfile?.full_name || 'クライアント',
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error('チャットルームの作成に失敗しました')
+      }
+
+      const chatRoom = await res.json()
+      
+      // チャットページに遷移
+      router.push(`/chat/${chatRoom.id}`)
+    } catch (error) {
+      console.error('チャット開始エラー:', error)
+      alert('チャットの開始に失敗しました')
+    }
   }
 
   if (loading) {
@@ -280,10 +301,11 @@ export default function JobDetail() {
                 📝 この案件に応募する
               </button>
               <button
-                onClick={handleMessage}
-                className="px-8 py-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold"
+                onClick={handleStartChat}
+                className="px-8 py-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold text-2xl"
+                title="クライアントに質問する"
               >
-                💬 メッセージを送る
+                💬
               </button>
             </div>
           )}
@@ -362,7 +384,6 @@ export default function JobDetail() {
               </div>
 
               <form onSubmit={handleApplySubmit} className="space-y-6">
-                {/* 案件情報の表示 */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="font-semibold text-gray-800 mb-2">{job.title}</h3>
                   <div className="flex gap-4 text-sm text-gray-600">
@@ -371,7 +392,6 @@ export default function JobDetail() {
                   </div>
                 </div>
 
-                {/* 提案金額 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     提案金額 <span className="text-red-500">*</span>
@@ -392,7 +412,6 @@ export default function JobDetail() {
                   <p className="mt-1 text-sm text-gray-500">クライアントの予算: {formatBudget(job.budget)}</p>
                 </div>
 
-                {/* 希望納期 */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     希望納期 <span className="text-red-500">*</span>
@@ -407,7 +426,6 @@ export default function JobDetail() {
                   <p className="mt-1 text-sm text-gray-500">クライアントの希望納期: {formatDate(job.deadline)}</p>
                 </div>
 
-                {/* 提案メッセージ */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     提案メッセージ・自己PR <span className="text-red-500">*</span>
@@ -422,7 +440,6 @@ export default function JobDetail() {
                   ></textarea>
                 </div>
 
-                {/* ボタン */}
                 <div className="flex gap-4">
                   <button
                     type="button"
@@ -447,4 +464,3 @@ export default function JobDetail() {
     </div>
   )
 }
-
