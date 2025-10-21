@@ -11,6 +11,10 @@ export default function JobDetail() {
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [clientProfile, setClientProfile] = useState(null)
+  
+  // 💬 新機能: メッセージ一覧
+  const [chatRooms, setChatRooms] = useState([])
+  const [loadingChats, setLoadingChats] = useState(false)
 
   // 応募フォームの状態管理
   const [showApplyModal, setShowApplyModal] = useState(false)
@@ -25,7 +29,7 @@ export default function JobDetail() {
     if (id) {
       loadJobDetail()
     }
-  }, [id])
+  }, [id, session])
 
   const loadJobDetail = async () => {
     try {
@@ -65,12 +69,36 @@ export default function JobDetail() {
 
         setClientProfile(profileData)
       }
+
+      // 💬 投稿主の場合、チャットルーム一覧を取得
+      if (session?.user?.email === jobData?.client_email) {
+        loadChatRooms(jobId)
+      }
     } catch (error) {
       console.error('案件詳細取得エラー:', error)
       alert('案件情報の取得に失敗しました: ' + error.message)
       setJob(null)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 💬 新機能: チャットルーム一覧を取得
+  const loadChatRooms = async (jobId) => {
+    try {
+      setLoadingChats(true)
+      const res = await fetch(`/api/jobs/${jobId}/chat-rooms`)
+      
+      if (!res.ok) {
+        throw new Error('チャットルームの取得に失敗しました')
+      }
+
+      const data = await res.json()
+      setChatRooms(data)
+    } catch (error) {
+      console.error('チャットルーム取得エラー:', error)
+    } finally {
+      setLoadingChats(false)
     }
   }
 
@@ -94,6 +122,16 @@ export default function JobDetail() {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
+    })
+  }
+
+  const formatMessageTime = (date) => {
+    if (!date) return ''
+    return new Date(date).toLocaleString('ja-JP', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     })
   }
 
@@ -176,6 +214,14 @@ export default function JobDetail() {
       console.error('チャット開始エラー:', error)
       alert('チャットの開始に失敗しました')
     }
+  }
+
+  // 💬 新機能: 相手のユーザー情報を取得
+  const getOtherUser = (room) => {
+    if (room.user1_email === session?.user?.email) {
+      return { email: room.user2_email, name: room.user2_name }
+    }
+    return { email: room.user1_email, name: room.user1_name }
   }
 
   if (loading) {
@@ -324,6 +370,78 @@ export default function JobDetail() {
             </div>
           )}
         </div>
+
+        {/* 💬 投稿主のみ: メッセージ一覧 */}
+        {isOwnJob && (
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+                💬 この案件へのメッセージ
+                {chatRooms.length > 0 && (
+                  <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
+                    {chatRooms.length}件
+                  </span>
+                )}
+              </h2>
+            </div>
+
+            {loadingChats ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
+                <p className="mt-2 text-gray-600">読み込み中...</p>
+              </div>
+            ) : chatRooms.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p className="text-lg mb-2">💬</p>
+                <p>まだメッセージはありません</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {chatRooms.map((room) => {
+                  const otherUser = getOtherUser(room)
+                  return (
+                    <div
+                      key={room.id}
+                      onClick={() => router.push(`/chat/${room.id}`)}
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                            {otherUser.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                              {otherUser.name}
+                            </h3>
+                            <p className="text-sm text-gray-500">{otherUser.email}</p>
+                          </div>
+                        </div>
+                        {room.latestMessage && (
+                          <div className="ml-13">
+                            <p className="text-gray-700 text-sm line-clamp-2">
+                              {room.latestMessage.message}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        {room.latestMessage && (
+                          <span className="text-xs text-gray-500">
+                            {formatMessageTime(room.latestMessage.created_at)}
+                          </span>
+                        )}
+                        <span className="text-blue-600 group-hover:text-blue-700 text-xl">
+                          →
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* クライアント情報 */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
