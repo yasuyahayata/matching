@@ -2,7 +2,7 @@ import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import CredentialsProvider from 'next-auth/providers/credentials'
 
-export default NextAuth({
+export const authOptions = {
   providers: [
     // Google OAuth Provider
     GoogleProvider({
@@ -75,12 +75,8 @@ export default NextAuth({
     }
   },
   
-  // ❌ この部分を削除（/loginページは存在しないため）
-  // pages: {
-  //   signIn: '/login',
-  //   error: '/login',
-  // },
-  
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',
-})
+}
+
+export default NextAuth(authOptions)
