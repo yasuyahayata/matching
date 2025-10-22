@@ -4,34 +4,106 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-// 都道府県リスト
-const PREFECTURES = [
-  '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
-  '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
-  '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
-  '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
-  '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
-  '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
-  '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県', '海外'
-]
+// タグカテゴリーの定義（プロフィール用）
+const tagCategories = {
+  '対象業種': [
+    'EC・小売',
+    'エンタメ・メディア',
+    '飲食・サービス',
+    'IT・テクノロジー',
+    '美容・ファッション',
+    '教育・スクール',
+    '金融・保険',
+    '不動産',
+    '医療・ヘルスケア',
+    '製造業',
+    'コンサルティング',
+    '人材・採用',
+    '旅行・観光',
+    'その他'
+  ],
+  '職種': [
+    'マーケティング担当',
+    'プロダクトマネージャー',
+    'セールス・営業',
+    'カスタマーサクセス',
+    'カスタマーサポート',
+    'ブランドマネージャー',
+    '広報・PR',
+    'SNS運用',
+    'コンテンツディレクター',
+    'コミュニティマネージャー',
+    'データアナリスト',
+    'プロジェクトマネージャー',
+    'エンジニア',
+    'デザイナー',
+    '編集者・ライター',
+    'その他'
+  ],
+  '解決できる課題': [
+    '新規顧客獲得',
+    'リピート率向上',
+    'ブランディング強化',
+    'エンゲージメント向上',
+    'LTV向上',
+    '口コミ促進'
+  ],
+  '得意な施策・手法': [
+    'コミュニティ運営',
+    'SNSマーケティング',
+    'イベント企画',
+    'ロイヤリティプログラム',
+    'UGC活用',
+    'インフルエンサー連携'
+  ],
+  'スキル・専門分野': [
+    'プログラミング',
+    'デザイン',
+    '動画・映像',
+    'ライティング',
+    'マーケティング',
+    'データ分析',
+    'プロジェクト管理'
+  ]
+};
 
-// 対象業種リスト
-const INDUSTRIES = [
-  'EC・小売',
-  'エンタメ・メディア',
-  '飲食・サービス',
-  'IT・テクノロジー',
-  '美容・ファッション',
-  '教育・スクール',
-  '金融・保険',
-  '不動産',
-  '医療・ヘルスケア',
-  '製造業',
-  'コンサルティング',
-  '人材・採用',
-  '旅行・観光',
-  'その他'
-]
+// スキル・専門分野の詳細
+const skillDetails = {
+  'プログラミング': [
+    'JavaScript', 'TypeScript', 'React', 'Vue.js', 'Angular',
+    'Python', 'Java', 'PHP', 'Ruby', 'Go', 'Swift', 'Kotlin',
+    'Node.js', 'Next.js', 'Nuxt.js', 'Django', 'Laravel'
+  ],
+  'デザイン': [
+    'Illustrator', 'Photoshop', 'Figma', 'Adobe XD', 'Sketch',
+    'InDesign', 'After Effects', 'Canva', 'UI/UXデザイン',
+    'グラフィックデザイン', 'ロゴデザイン', 'Webデザイン'
+  ],
+  '動画・映像': [
+    'Premiere Pro', 'After Effects', 'Final Cut Pro', 'DaVinci Resolve',
+    '動画編集', 'モーショングラフィックス', 'アニメーション',
+    'YouTube編集', 'TikTok編集', '撮影', '字幕作成'
+  ],
+  'ライティング': [
+    'SEOライティング', 'コピーライティング', 'セールスライティング',
+    'コンテンツライティング', '技術文書作成', '翻訳（英日）',
+    '翻訳（日英）', '校正', '編集', 'ブログ執筆'
+  ],
+  'マーケティング': [
+    'Google Analytics', 'SEO', 'SEM', 'SNS運用',
+    'Facebook広告', 'Google広告', 'Instagram運用', 'Twitter運用',
+    'コンテンツマーケティング', 'メールマーケティング', 'アフィリエイト'
+  ],
+  'データ分析': [
+    'Excel', 'Google Sheets', 'SQL', 'Python（分析）',
+    'Tableau', 'Power BI', 'Google Data Studio',
+    'R言語', 'データビジュアライゼーション'
+  ],
+  'プロジェクト管理': [
+    'Notion', 'Slack', 'Trello', 'Asana', 'Jira',
+    'Backlog', 'Monday.com', 'アジャイル', 'スクラム'
+  ]
+};
 
 export default function Profile() {
   const { data: session } = useSession()
@@ -44,12 +116,17 @@ export default function Profile() {
     full_name: '',
     email: '',
     bio: '',
-    location: '',
     company_website: '',
     company_name: '',
     target_industries: [],
+    job_types: [],
+    interested_challenges: [],
+    expertise_methods: [],
+    skills: [],
     avatar_url: ''
   })
+
+  const [selectedSkillCategory, setSelectedSkillCategory] = useState(null)
 
   const [postedJobs, setPostedJobs] = useState([])
   const [stats, setStats] = useState({
@@ -84,10 +161,13 @@ export default function Profile() {
           full_name: data.full_name || session.user.name || '',
           email: data.email || session.user.email || '',
           bio: data.bio || '',
-          location: data.location || '',
           company_website: data.company_website || '',
           company_name: data.company_name || '',
           target_industries: data.target_industries || [],
+          job_types: data.job_types || [],
+          interested_challenges: data.interested_challenges || [],
+          expertise_methods: data.expertise_methods || [],
+          skills: data.skills || [],
           avatar_url: data.avatar_url || session.user.image || ''
         })
       } else {
@@ -95,10 +175,13 @@ export default function Profile() {
           full_name: session.user.name || '',
           email: session.user.email || '',
           bio: '',
-          location: '',
           company_website: '',
           company_name: '',
           target_industries: [],
+          job_types: [],
+          interested_challenges: [],
+          expertise_methods: [],
+          skills: [],
           avatar_url: session.user.image || ''
         })
       }
@@ -143,29 +226,61 @@ export default function Profile() {
     }))
   }
 
-  // 対象業種を追加
-  const addIndustry = (industry) => {
-    if (!profile.target_industries.includes(industry)) {
+  // タグを追加
+  const addTag = (category, tag) => {
+    const fieldMap = {
+      '対象業種': 'target_industries',
+      '職種': 'job_types',
+      '解決できる課題': 'interested_challenges',
+      '得意な施策・手法': 'expertise_methods',
+      'スキル・専門分野': 'skills'
+    }
+    
+    const field = fieldMap[category]
+    if (!profile[field].includes(tag)) {
       setProfile(prev => ({
         ...prev,
-        target_industries: [...prev.target_industries, industry]
+        [field]: [...prev[field], tag]
       }))
     }
   }
 
-  // 対象業種を削除
-  const removeIndustry = (industry) => {
+  // タグを削除
+  const removeTag = (category, tag) => {
+    const fieldMap = {
+      '対象業種': 'target_industries',
+      '職種': 'job_types',
+      '解決できる課題': 'interested_challenges',
+      '得意な施策・手法': 'expertise_methods',
+      'スキル・専門分野': 'skills'
+    }
+    
+    const field = fieldMap[category]
     setProfile(prev => ({
       ...prev,
-      target_industries: prev.target_industries.filter(i => i !== industry)
+      [field]: prev[field].filter(t => t !== tag)
     }))
+  }
+
+  // スキル詳細を選択
+  const handleSkillDetailClick = (skill) => {
+    if (profile.skills.includes(skill)) {
+      setProfile(prev => ({
+        ...prev,
+        skills: prev.skills.filter(s => s !== skill)
+      }))
+    } else {
+      setProfile(prev => ({
+        ...prev,
+        skills: [...prev.skills, skill]
+      }))
+    }
   }
 
   const handleSave = async () => {
     try {
       setSaving(true)
 
-      // プロフィールが存在するか確認
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('id, email')
@@ -178,23 +293,24 @@ export default function Profile() {
       }
 
       if (existingProfile) {
-        // 更新
         const { error } = await supabase
           .from('profiles')
           .update({
             full_name: profile.full_name,
             bio: profile.bio,
-            location: profile.location,
             company_website: profile.company_website,
             company_name: profile.company_name,
             target_industries: profile.target_industries,
+            job_types: profile.job_types,
+            interested_challenges: profile.interested_challenges,
+            expertise_methods: profile.expertise_methods,
+            skills: profile.skills,
             updated_at: new Date().toISOString()
           })
           .eq('email', session.user.email)
 
         if (error) throw error
       } else {
-        // 新規作成
         const { error } = await supabase
           .from('profiles')
           .insert([
@@ -202,10 +318,13 @@ export default function Profile() {
               email: profile.email,
               full_name: profile.full_name,
               bio: profile.bio,
-              location: profile.location,
               company_website: profile.company_website,
               company_name: profile.company_name,
               target_industries: profile.target_industries,
+              job_types: profile.job_types,
+              interested_challenges: profile.interested_challenges,
+              expertise_methods: profile.expertise_methods,
+              skills: profile.skills,
               avatar_url: session.user.image || ''
             }
           ])
@@ -276,9 +395,6 @@ export default function Profile() {
               <p className="text-gray-600 mb-2">🏢 {profile.company_name}</p>
             )}
             <p className="text-gray-600">{profile.bio || 'プロフィールを設定してください'}</p>
-            {profile.location && (
-              <p className="text-gray-500 mt-2">📍 {profile.location}</p>
-            )}
           </div>
         </div>
       </div>
@@ -326,20 +442,43 @@ export default function Profile() {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-1 gap-6">
-                {profile.target_industries && profile.target_industries.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">対象業種</h3>
-                    <div className="bg-gray-50 p-4 rounded-lg min-h-[100px]">
+              {/* 強み・提供できる価値セクション */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border-2 border-blue-200">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                  💪 強み・提供できる価値
+                </h2>
+
+                {/* タグ表示 */}
+                {Object.entries({
+                  '対象業種': profile.target_industries,
+                  '職種': profile.job_types,
+                  '解決できる課題': profile.interested_challenges,
+                  '得意な施策・手法': profile.expertise_methods,
+                  'スキル・専門分野': profile.skills
+                }).map(([label, tags]) => (
+                  tags && tags.length > 0 && (
+                    <div key={label} className="mb-4 last:mb-0">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-2">{label}</h3>
                       <div className="flex flex-wrap gap-2">
-                        {profile.target_industries.map((industry, index) => (
+                        {tags.map((tag, index) => (
                           <span key={index} className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                            {industry}
+                            {tag}
                           </span>
                         ))}
                       </div>
                     </div>
-                  </div>
+                  )
+                ))}
+
+                {/* 何も設定されていない場合 */}
+                {profile.target_industries.length === 0 && 
+                 profile.job_types.length === 0 && 
+                 profile.interested_challenges.length === 0 && 
+                 profile.expertise_methods.length === 0 && 
+                 profile.skills.length === 0 && (
+                  <p className="text-gray-500 text-center py-8">
+                    プロフィール編集から強みを設定してください
+                  </p>
                 )}
               </div>
 
@@ -442,134 +581,195 @@ export default function Profile() {
               <h3 className="text-xl font-semibold text-gray-800 mb-6">プロフィール編集</h3>
 
               <div className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      名前 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="full_name"
-                      value={profile.full_name}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="山田太郎"
-                    />
-                  </div>
+                {/* 基本情報セクション */}
+                <div className="bg-gray-50 p-6 rounded-xl">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4">基本情報</h4>
+                  
+                  <div className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          名前 <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="full_name"
+                          value={profile.full_name}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="山田太郎"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">メールアドレス</label>
-                    <input
-                      type="email"
-                      value={profile.email}
-                      disabled
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">※ メールアドレスは変更できません</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">自己紹介</label>
-                  <textarea
-                    name="bio"
-                    value={profile.bio}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="あなたの経験や専門分野について教えてください..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">所在地</label>
-                  <select
-                    name="location"
-                    value={profile.location}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">選択してください</option>
-                    {PREFECTURES.map((prefecture) => (
-                      <option key={prefecture} value={prefecture}>
-                        {prefecture}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">所属会社</label>
-                  <input
-                    type="text"
-                    name="company_name"
-                    value={profile.company_name}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="株式会社〇〇"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">会社ホームページ・SNS</label>
-                  <input
-                    type="url"
-                    name="company_website"
-                    value={profile.company_website}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com"
-                  />
-                </div>
-
-                {/* 対象業種（タグ選択式） */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">対象業種</label>
-
-                  {/* 選択中の業種表示 */}
-                  {profile.target_industries.length > 0 && (
-                    <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="text-sm text-gray-600 mb-2">選択中の業種 ({profile.target_industries.length}個):</div>
-                      <div className="flex flex-wrap gap-2">
-                        {profile.target_industries.map(industry => (
-                          <span
-                            key={industry}
-                            className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-sm font-medium"
-                          >
-                            {industry}
-                            <button
-                              type="button"
-                              onClick={() => removeIndustry(industry)}
-                              className="ml-2 hover:bg-white/20 rounded-full p-0.5"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">メールアドレス</label>
+                        <input
+                          type="email"
+                          value={profile.email}
+                          disabled
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">※ メールアドレスは変更できません</p>
                       </div>
                     </div>
-                  )}
 
-                  {/* 業種選択 */}
-                  <div className="mb-4">
-                    <div className="text-sm text-gray-600 mb-2">業種を選択:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {INDUSTRIES.filter(industry => !profile.target_industries.includes(industry)).map(industry => (
-                        <button
-                          key={industry}
-                          type="button"
-                          onClick={() => addIndustry(industry)}
-                          className="px-3 py-1 bg-white hover:bg-blue-50 border border-gray-300 text-gray-700 rounded-full text-sm transition-colors"
-                        >
-                          + {industry}
-                        </button>
-                      ))}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">自己紹介</label>
+                      <textarea
+                        name="bio"
+                        value={profile.bio}
+                        onChange={handleInputChange}
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="あなたの経験や専門分野について教えてください..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">所属会社</label>
+                      <input
+                        type="text"
+                        name="company_name"
+                        value={profile.company_name}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="株式会社〇〇"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">会社ホームページ・SNS</label>
+                      <input
+                        type="url"
+                        name="company_website"
+                        value={profile.company_website}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="https://example.com"
+                      />
                     </div>
                   </div>
+                </div>
 
-                  <p className="text-xs text-gray-500 mt-2">
-                    ※ 対象としている業種を選択してください。複数選択可能です。
-                  </p>
+                {/* 強み・提供できる価値セクション */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border-2 border-blue-200">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    💪 強み・提供できる価値
+                  </h4>
+
+                  {/* タグ選択セクション */}
+                  {Object.entries(tagCategories).map(([categoryName, tags]) => {
+                    const fieldMap = {
+                      '対象業種': 'target_industries',
+                      '職種': 'job_types',
+                      '解決できる課題': 'interested_challenges',
+                      '得意な施策・手法': 'expertise_methods',
+                      'スキル・専門分野': 'skills'
+                    }
+                    
+                    const field = fieldMap[categoryName]
+                    const selectedTags = profile[field] || []
+
+                    return (
+                      <div key={categoryName} className="mb-6 last:mb-0">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">{categoryName}</label>
+
+                        {/* 選択中のタグ表示 */}
+                        {selectedTags.length > 0 && (
+                          <div className="mb-3 p-3 bg-white rounded-lg border border-blue-200">
+                            <div className="text-xs text-gray-600 mb-2">選択中 ({selectedTags.length}個):</div>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedTags.map(tag => (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center px-2 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-xs font-medium"
+                                >
+                                  {tag}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeTag(categoryName, tag)}
+                                    className="ml-1 hover:bg-white/20 rounded-full p-0.5"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* スキル・専門分野の場合は2階層 */}
+                        {categoryName === 'スキル・専門分野' ? (
+                          <>
+                            {!selectedSkillCategory ? (
+                              <div className="mb-3">
+                                <div className="text-xs text-gray-600 mb-2">カテゴリーを選択:</div>
+                                <div className="flex flex-wrap gap-2">
+                                  {tags.map(tag => (
+                                    <button
+                                      key={tag}
+                                      type="button"
+                                      onClick={() => setSelectedSkillCategory(tag)}
+                                      className="px-2 py-1 bg-white hover:bg-blue-50 border border-gray-300 text-gray-700 rounded-full text-xs transition-colors"
+                                    >
+                                      {tag} →
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mb-3 p-3 bg-white rounded-lg border border-gray-200">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="text-xs font-semibold text-gray-700">{selectedSkillCategory}</div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSkillCategory(null)}
+                                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                                  >
+                                    ← 戻る
+                                  </button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {skillDetails[selectedSkillCategory].map(skill => (
+                                    <button
+                                      key={skill}
+                                      type="button"
+                                      onClick={() => handleSkillDetailClick(skill)}
+                                      className={`px-2 py-1 rounded-full text-xs transition-colors ${
+                                        selectedTags.includes(skill)
+                                          ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white'
+                                          : 'bg-gray-100 hover:bg-blue-50 text-gray-700'
+                                      }`}
+                                    >
+                                      {skill}
+                                      {selectedTags.includes(skill) && ' ✓'}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          /* 通常のタグ選択 */
+                          <div className="mb-3">
+                            <div className="text-xs text-gray-600 mb-2">選択:</div>
+                            <div className="flex flex-wrap gap-2">
+                              {tags.filter(tag => !selectedTags.includes(tag)).map(tag => (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => addTag(categoryName, tag)}
+                                  className="px-2 py-1 bg-white hover:bg-blue-50 border border-gray-300 text-gray-700 rounded-full text-xs transition-colors"
+                                >
+                                  + {tag}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
 
                 <div className="pt-6 flex space-x-4">
