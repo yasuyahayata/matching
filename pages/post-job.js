@@ -4,46 +4,88 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-// スキル一覧（カテゴリ別）
-const skillsData = {
+// タグカテゴリーの定義（ホームページと同じ）
+const tagCategories = {
+  'コンテンツタイプ別': [
+    '事例・ケーススタディ',
+    'ノウハウ・How to',
+    '最新トレンド',
+    'インタビュー',
+    'レポート・調査'
+  ],
+  '業界・テーマ別': [
+    'すべて',
+    'EC・小売',
+    'エンタメ・メディア',
+    '飲食・サービス',
+    'IT・テクノロジー',
+    '美容・ファッション',
+    '教育・スクール'
+  ],
+  '施策・手法別': [
+    'コミュニティ運営',
+    'SNSマーケティング',
+    'イベント企画',
+    'ロイヤリティプログラム',
+    'UGC活用',
+    'インフルエンサー連携'
+  ],
+  '課題・目的別': [
+    '新規顧客獲得',
+    'リピート率向上',
+    'ブランディング強化',
+    'エンゲージメント向上',
+    'LTV向上',
+    '口コミ促進'
+  ],
+  'スキル・専門分野別': [
+    'プログラミング',
+    'デザイン',
+    '動画・映像',
+    'ライティング',
+    'マーケティング',
+    'データ分析',
+    'プロジェクト管理'
+  ]
+};
+
+// スキル・専門分野の詳細（3階層目）
+const skillDetails = {
   'プログラミング': [
-    'React', 'Vue.js', 'Angular', 'TypeScript', 'JavaScript', 
-    'Python', 'Java', 'PHP', 'Ruby', 'Go', 'Swift', 'Kotlin', 
-    'C#', 'Node.js', 'Django', 'Flask', 'Laravel', 'Ruby on Rails', 
-    'Next.js', 'Nuxt.js', 'Express.js'
+    'JavaScript', 'TypeScript', 'React', 'Vue.js', 'Angular',
+    'Python', 'Java', 'PHP', 'Ruby', 'Go', 'Swift', 'Kotlin',
+    'Node.js', 'Next.js', 'Nuxt.js', 'Django', 'Laravel'
   ],
   'デザイン': [
-    'Figma', 'Adobe XD', 'Sketch', 'Photoshop', 'Illustrator', 
-    'InDesign', 'After Effects', 'Premiere Pro', 'Blender', 
-    'Canva', 'UI/UX', 'グラフィックデザイン', 'ロゴデザイン'
-  ],
-  'マーケティング': [
-    'Google Analytics', 'SEO', 'SEM', 'SNS運用', 'Facebook広告', 
-    'Google広告', 'Instagram運用', 'Twitter運用', 'LINE広告',
-    'コンテンツマーケティング', 'メールマーケティング', 'アフィリエイト'
-  ],
-  'ライティング': [
-    'SEOライティング', 'コピーライティング', '技術文書作成', 
-    '翻訳（英日）', '翻訳（日英）', '校正', '編集', 'ブログ執筆',
-    'プレスリリース', 'シナリオ作成'
+    'Illustrator', 'Photoshop', 'Figma', 'Adobe XD', 'Sketch',
+    'InDesign', 'After Effects', 'Canva', 'UI/UXデザイン',
+    'グラフィックデザイン', 'ロゴデザイン', 'Webデザイン'
   ],
   '動画・映像': [
-    '動画編集', 'アニメーション', 'モーショングラフィックス',
-    'YouTube編集', 'TikTok編集', '撮影', '字幕作成', '音声編集'
+    'Premiere Pro', 'After Effects', 'Final Cut Pro', 'DaVinci Resolve',
+    '動画編集', 'モーショングラフィックス', 'アニメーション',
+    'YouTube編集', 'TikTok編集', '撮影', '字幕作成'
   ],
-  'その他': [
-    'Excel', 'PowerPoint', 'Word', 'SQL', 'Git', 'Docker', 
-    'AWS', 'Firebase', 'WordPress', 'Shopify', 'データ分析',
-    'プロジェクト管理', 'Slack', 'Notion'
+  'ライティング': [
+    'SEOライティング', 'コピーライティング', 'セールスライティング',
+    'コンテンツライティング', '技術文書作成', '翻訳（英日）',
+    '翻訳（日英）', '校正', '編集', 'ブログ執筆'
+  ],
+  'マーケティング': [
+    'Google Analytics', 'SEO', 'SEM', 'SNS運用',
+    'Facebook広告', 'Google広告', 'Instagram運用', 'Twitter運用',
+    'コンテンツマーケティング', 'メールマーケティング', 'アフィリエイト'
+  ],
+  'データ分析': [
+    'Excel', 'Google Sheets', 'SQL', 'Python（分析）',
+    'Tableau', 'Power BI', 'Google Data Studio',
+    'R言語', 'データビジュアライゼーション'
+  ],
+  'プロジェクト管理': [
+    'Notion', 'Slack', 'Trello', 'Asana', 'Jira',
+    'Backlog', 'Monday.com', 'アジャイル', 'スクラム'
   ]
-}
-
-// よく使われるスキル（トップ表示用）
-const popularSkills = [
-  'React', 'Vue.js', 'TypeScript', 'JavaScript', 'Python', 
-  'PHP', 'Figma', 'Photoshop', 'Illustrator', 'WordPress',
-  'SEO', 'Google Analytics', 'Excel'
-]
+};
 
 export default function PostJob() {
   const { data: session } = useSession()
@@ -51,23 +93,21 @@ export default function PostJob() {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
-    category: 'プログラミング',
     budget: 50000,
     deadline: '',
     description: '',
-    skills: [], // 配列に変更
+    tags: [],
     experience_level: '初級'
   })
   
-  const [skillSearch, setSkillSearch] = useState('')
-  const [showAllSkills, setShowAllSkills] = useState(false)
+  const [selectedMainCategory, setSelectedMainCategory] = useState(null)
+  const [selectedSkillCategory, setSelectedSkillCategory] = useState(null)
 
-  const categories = ['プログラミング', 'デザイン', '動画・映像', 'ライティング', 'マーケティング']
   const experienceLevels = ['初級', '中級', '上級']
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-4">ログインが必要です</h1>
           <p className="text-gray-600 mb-4">案件を投稿するにはログインしてください。</p>
@@ -105,38 +145,65 @@ export default function PostJob() {
     }))
   }
 
-  // スキル追加
-  const addSkill = (skill) => {
-    if (!formData.skills.includes(skill)) {
+  // メインカテゴリーをクリック
+  const handleMainCategoryClick = (category) => {
+    if (selectedMainCategory === category) {
+      setSelectedMainCategory(null)
+      setSelectedSkillCategory(null)
+    } else {
+      setSelectedMainCategory(category)
+      setSelectedSkillCategory(null)
+    }
+  }
+
+  // サブカテゴリーをクリック
+  const handleSubCategoryClick = (subCategory) => {
+    // スキル・専門分野別の場合は、詳細スキルを表示
+    if (selectedMainCategory === 'スキル・専門分野別' && skillDetails[subCategory]) {
+      setSelectedSkillCategory(subCategory)
+      return
+    }
+
+    // 通常のタグ選択
+    addTag(subCategory)
+  }
+
+  // 詳細スキルをクリック
+  const handleDetailSkillClick = (skill) => {
+    addTag(skill)
+  }
+
+  // スキルカテゴリーに戻る
+  const backToSkillCategories = () => {
+    setSelectedSkillCategory(null)
+  }
+
+  // タグ追加
+  const addTag = (tag) => {
+    if (!formData.tags.includes(tag)) {
       setFormData(prev => ({
         ...prev,
-        skills: [...prev.skills, skill]
+        tags: [...prev.tags, tag]
       }))
     }
   }
 
-  // スキル削除
-  const removeSkill = (skill) => {
+  // タグ削除
+  const removeTag = (tag) => {
     setFormData(prev => ({
       ...prev,
-      skills: prev.skills.filter(s => s !== skill)
+      tags: prev.tags.filter(t => t !== tag)
     }))
   }
 
-  // スキル検索フィルター
-  const getFilteredSkills = () => {
-    if (!skillSearch) return []
-    
-    const allSkills = Object.values(skillsData).flat()
-    return allSkills.filter(skill => 
-      skill.toLowerCase().includes(skillSearch.toLowerCase()) &&
-      !formData.skills.includes(skill)
-    )
-  }
-
-  // カテゴリ別の全スキル取得
-  const getAllSkillsByCategory = () => {
-    return skillsData
+  // すべてのタグをクリア
+  const clearAllTags = () => {
+    setFormData(prev => ({
+      ...prev,
+      tags: []
+    }))
+    setSelectedMainCategory(null)
+    setSelectedSkillCategory(null)
   }
 
   const handleSubmit = async (e) => {
@@ -144,16 +211,19 @@ export default function PostJob() {
     setLoading(true)
 
     try {
+      // categoryは最初に選択されたタグまたはデフォルト値を使用
+      const category = formData.tags.length > 0 ? formData.tags[0] : 'その他'
+
       const { data, error } = await supabase
         .from('jobs')
         .insert([
           {
             title: formData.title,
-            category: formData.category,
+            category: category,
             budget: formData.budget,
             deadline: formData.deadline || null,
             description: formData.description,
-            skills: formData.skills, // 既に配列
+            skills: formData.tags,
             experience_level: formData.experience_level,
             client_email: session.user.email,
             client_name: session.user.name || session.user.email,
@@ -177,290 +247,271 @@ export default function PostJob() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* ナビゲーション */}
-      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              CrowdWork
-            </Link>
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="text-gray-700 hover:text-blue-600 transition-colors">ホーム</Link>
-              <Link href="/profile" className="text-gray-700 hover:text-blue-600 transition-colors">プロフィール</Link>
-              <Link href="/messages" className="text-gray-700 hover:text-blue-600 transition-colors">💬 メッセージ</Link>
-            </div>
+    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="bg-white rounded-2xl shadow-xl p-8">
+        <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">案件を投稿</h1>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* 案件タイトル */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              案件タイトル <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="例：Webサイトのデザインをお願いします"
+            />
           </div>
-        </div>
-      </nav>
 
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl p-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">案件を投稿</h1>
+          {/* タグ選択（3階層システム） - カテゴリの位置に配置 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              カテゴリ <span className="text-red-500">*</span>
+            </label>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* 案件タイトル */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                案件タイトル <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="例：Webサイトのデザインをお願いします"
-              />
-            </div>
-
-            {/* カテゴリ */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                カテゴリ <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 予算スライダー */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                予算 <span className="text-red-500">*</span>
-              </label>
-              
-              <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">選択中の予算:</span>
-                  <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-                    ¥{formData.budget.toLocaleString()}
-                  </span>
+            {/* 選択中のタグ表示 */}
+            {formData.tags.length > 0 && (
+              <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-600">選択中のタグ ({formData.tags.length}個):</span>
+                  <button
+                    type="button"
+                    onClick={clearAllTags}
+                    className="text-xs text-red-600 hover:text-red-700 font-medium"
+                  >
+                    すべてクリア
+                  </button>
                 </div>
-              </div>
-
-              <div className="mb-4">
-                <input
-                  type="range"
-                  min="5000"
-                  max="500000"
-                  step="1000"
-                  value={formData.budget}
-                  onChange={handleBudgetChange}
-                  className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                  style={{
-                    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((formData.budget - 5000) / (500000 - 5000)) * 100}%, #e5e7eb ${((formData.budget - 5000) / (500000 - 5000)) * 100}%, #e5e7eb 100%)`
-                  }}
-                />
-                <div className="flex justify-between text-xs text-gray-500 mt-2">
-                  <span>¥5,000</span>
-                  <span>¥250,000</span>
-                  <span>¥500,000</span>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">または直接入力:</span>
-                <input
-                  type="text"
-                  value={`¥${formData.budget.toLocaleString()}`}
-                  onChange={handleBudgetInputChange}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-2">※ 1,000円単位で自動調整されます（最低¥5,000〜最高¥500,000）</p>
-            </div>
-
-            {/* 納期 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                納期
-              </label>
-              <input
-                type="date"
-                name="deadline"
-                value={formData.deadline}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* 経験レベル */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                経験レベル
-              </label>
-              <select
-                name="experience_level"
-                value={formData.experience_level}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {experienceLevels.map(level => (
-                  <option key={level} value={level}>{level}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 必要なスキル（タグ選択式） */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                必要なスキル <span className="text-red-500">*</span>
-              </label>
-
-              {/* 選択中のスキル表示 */}
-              {formData.skills.length > 0 && (
-                <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="text-sm text-gray-600 mb-2">選択中のスキル ({formData.skills.length}個):</div>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.skills.map(skill => (
-                      <span
-                        key={skill}
-                        className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-sm font-medium"
-                      >
-                        {skill}
-                        <button
-                          type="button"
-                          onClick={() => removeSkill(skill)}
-                          className="ml-2 hover:bg-white/20 rounded-full p-0.5"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 検索バー */}
-              <div className="mb-4">
-                <input
-                  type="text"
-                  value={skillSearch}
-                  onChange={(e) => setSkillSearch(e.target.value)}
-                  placeholder="🔍 スキルを検索..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                
-                {/* 検索結果 */}
-                {skillSearch && getFilteredSkills().length > 0 && (
-                  <div className="mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                    <div className="flex flex-wrap gap-2">
-                      {getFilteredSkills().slice(0, 10).map(skill => (
-                        <button
-                          key={skill}
-                          type="button"
-                          onClick={() => {
-                            addSkill(skill)
-                            setSkillSearch('')
-                          }}
-                          className="px-3 py-1 bg-gray-100 hover:bg-blue-100 text-gray-700 rounded-full text-sm transition-colors"
-                        >
-                          + {skill}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* よく使われるスキル */}
-              <div className="mb-4">
-                <div className="text-sm text-gray-600 mb-2">よく使われるスキル:</div>
                 <div className="flex flex-wrap gap-2">
-                  {popularSkills.filter(skill => !formData.skills.includes(skill)).map(skill => (
-                    <button
-                      key={skill}
-                      type="button"
-                      onClick={() => addSkill(skill)}
-                      className="px-3 py-1 bg-white hover:bg-blue-50 border border-gray-300 text-gray-700 rounded-full text-sm transition-colors"
+                  {formData.tags.map(tag => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-sm font-medium"
                     >
-                      + {skill}
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="ml-2 hover:bg-white/20 rounded-full p-0.5"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* メインカテゴリー */}
+            <div className="mb-4">
+              <div className="text-sm text-gray-600 mb-2">カテゴリーを選択:</div>
+              <div className="flex flex-wrap gap-2">
+                {Object.keys(tagCategories).map(category => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => handleMainCategoryClick(category)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                      selectedMainCategory === category
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                        : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-blue-500'
+                    }`}
+                  >
+                    {category}
+                    <span className="ml-2">
+                      {selectedMainCategory === category ? '▲' : '▼'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* サブカテゴリー（2階層目） */}
+            {selectedMainCategory && !selectedSkillCategory && (
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-sm font-semibold text-gray-700 mb-3">{selectedMainCategory}</div>
+                <div className="flex flex-wrap gap-2">
+                  {tagCategories[selectedMainCategory].map(subCategory => (
+                    <button
+                      key={subCategory}
+                      type="button"
+                      onClick={() => handleSubCategoryClick(subCategory)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                        formData.tags.includes(subCategory)
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:border-blue-500'
+                      }`}
+                    >
+                      {subCategory}
+                      {selectedMainCategory === 'スキル・専門分野別' && skillDetails[subCategory] && (
+                        <span className="ml-1">→</span>
+                      )}
+                      {formData.tags.includes(subCategory) && (
+                        <span className="ml-1">✓</span>
+                      )}
                     </button>
                   ))}
                 </div>
               </div>
+            )}
 
-              {/* もっと見るボタン */}
-              <button
-                type="button"
-                onClick={() => setShowAllSkills(!showAllSkills)}
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-              >
-                {showAllSkills ? '▲ 閉じる' : '▼ すべてのスキルを見る'}
-              </button>
-
-              {/* カテゴリ別全スキル */}
-              {showAllSkills && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
-                  {Object.entries(getAllSkillsByCategory()).map(([category, skills]) => (
-                    <div key={category} className="mb-4 last:mb-0">
-                      <div className="text-sm font-semibold text-gray-700 mb-2">{category}</div>
-                      <div className="flex flex-wrap gap-2">
-                        {skills.filter(skill => !formData.skills.includes(skill)).map(skill => (
-                          <button
-                            key={skill}
-                            type="button"
-                            onClick={() => addSkill(skill)}
-                            className="px-3 py-1 bg-white hover:bg-blue-50 border border-gray-300 text-gray-700 rounded-full text-sm transition-colors"
-                          >
-                            + {skill}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+            {/* 詳細スキル（3階層目） */}
+            {selectedSkillCategory && (
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm font-semibold text-gray-700">{selectedSkillCategory}</div>
+                  <button
+                    type="button"
+                    onClick={backToSkillCategories}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    ← 戻る
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {skillDetails[selectedSkillCategory].map(skill => (
+                    <button
+                      key={skill}
+                      type="button"
+                      onClick={() => handleDetailSkillClick(skill)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                        formData.tags.includes(skill)
+                          ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:border-blue-500'
+                      }`}
+                    >
+                      {skill}
+                      {formData.tags.includes(skill) && (
+                        <span className="ml-1">✓</span>
+                      )}
+                    </button>
                   ))}
                 </div>
-              )}
+              </div>
+            )}
 
-              <p className="text-xs text-gray-500 mt-2">
-                ※ 必要なスキルを選択してください。検索バーで絞り込むこともできます。
-              </p>
+            <p className="text-xs text-gray-500 mt-2">
+              ※ カテゴリーを選択してタグを追加してください。複数選択可能です。
+            </p>
+          </div>
+
+          {/* 予算スライダー */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              予算 <span className="text-red-500">*</span>
+            </label>
+            
+            <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">選択中の予算:</span>
+                <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                  ¥{formData.budget.toLocaleString()}
+                </span>
+              </div>
             </div>
 
-            {/* 案件詳細 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                案件詳細 <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                required
-                rows="6"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="案件の詳細を記入してください"
+            <div className="mb-4">
+              <input
+                type="range"
+                min="5000"
+                max="500000"
+                step="1000"
+                value={formData.budget}
+                onChange={handleBudgetChange}
+                className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((formData.budget - 5000) / (500000 - 5000)) * 100}%, #e5e7eb ${((formData.budget - 5000) / (500000 - 5000)) * 100}%, #e5e7eb 100%)`
+                }}
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-2">
+                <span>¥5,000</span>
+                <span>¥250,000</span>
+                <span>¥500,000</span>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">または直接入力:</span>
+              <input
+                type="text"
+                value={`¥${formData.budget.toLocaleString()}`}
+                onChange={handleBudgetInputChange}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
               />
             </div>
+            <p className="text-xs text-gray-500 mt-2">※ 1,000円単位で自動調整されます（最低¥5,000〜最高¥500,000）</p>
+          </div>
 
-            {/* 送信ボタン */}
-            <div className="flex space-x-4 pt-4">
-              <button
-                type="button"
-                onClick={() => router.push('/')}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg font-medium transition-colors"
-              >
-                キャンセル
-              </button>
-              <button
-                type="submit"
-                disabled={loading || formData.skills.length === 0}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 px-6 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? '投稿中...' : '案件を投稿'}
-              </button>
-            </div>
-          </form>
-        </div>
+          {/* 納期 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              納期
+            </label>
+            <input
+              type="date"
+              name="deadline"
+              value={formData.deadline}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* 経験レベル */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              経験レベル
+            </label>
+            <select
+              name="experience_level"
+              value={formData.experience_level}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {experienceLevels.map(level => (
+                <option key={level} value={level}>{level}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 案件詳細 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              案件詳細 <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleInputChange}
+              required
+              rows="6"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="案件の詳細を記入してください"
+            />
+          </div>
+
+          {/* 送信ボタン */}
+          <div className="flex space-x-4 pt-4">
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg font-medium transition-colors"
+            >
+              キャンセル
+            </button>
+            <button
+              type="submit"
+              disabled={loading || formData.tags.length === 0}
+              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 px-6 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? '投稿中...' : '案件を投稿'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )
