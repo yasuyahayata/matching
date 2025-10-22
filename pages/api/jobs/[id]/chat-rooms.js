@@ -52,9 +52,10 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'チャットルームの取得に失敗しました' })
     }
 
-    // 各チャットルームの最新メッセージを取得
+    // 各チャットルームの最新メッセージと未読数を取得
     const chatRoomsWithMessages = await Promise.all(
       chatRooms.map(async (room) => {
+        // 最新メッセージを取得
         const { data: messages } = await supabase
           .from('messages')
           .select('*')
@@ -62,10 +63,19 @@ export default async function handler(req, res) {
           .order('created_at', { ascending: false })
           .limit(1)
 
+        // 💬 新機能: 未読メッセージ数を取得
+        const { data: unreadMessages, count: unreadCount } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: false })
+          .eq('chat_room_id', room.id)
+          .neq('sender_email', currentUserEmail) // 自分以外が送信
+          .eq('is_read', false) // 未読のみ
+
         return {
           ...room,
           latestMessage: messages && messages.length > 0 ? messages[0] : null,
-          messageCount: messages ? messages.length : 0
+          messageCount: messages ? messages.length : 0,
+          unreadCount: unreadCount || 0
         }
       })
     )

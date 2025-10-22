@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
-import Layout from '../../components/Layout'
 import styles from '../../styles/Chat.module.css'
 
 export default function ChatRoom() {
@@ -18,6 +17,7 @@ export default function ChatRoom() {
   const [notificationPermission, setNotificationPermission] = useState('default')
   
   const lastMessageCountRef = useRef(0)
+  const hasMarkedAsReadRef = useRef(false)
 
   // 通知権限をリクエスト
   useEffect(() => {
@@ -46,6 +46,28 @@ export default function ChatRoom() {
     const interval = setInterval(fetchMessages, 5000)
     return () => clearInterval(interval)
   }, [roomId, status])
+
+  // 💬 新機能: ページを開いたら既読にする
+  useEffect(() => {
+    if (roomId && !hasMarkedAsReadRef.current && messages.length > 0) {
+      markAsRead()
+      hasMarkedAsReadRef.current = true
+    }
+  }, [roomId, messages])
+
+  // 💬 新機能: ページがアクティブになったら既読にする
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && roomId) {
+        markAsRead()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [roomId])
 
   const fetchChatData = async () => {
     try {
@@ -87,12 +109,28 @@ export default function ChatRoom() {
             showNotification(msg.sender_name, msg.message)
           }
         })
+        
+        // 新しいメッセージがあったら既読にする
+        if (!document.hidden) {
+          markAsRead()
+        }
       }
       
       lastMessageCountRef.current = data.length
       setMessages(data)
     } catch (err) {
       console.error('メッセージ取得エラー:', err)
+    }
+  }
+
+  // 💬 新機能: メッセージを既読にする
+  const markAsRead = async () => {
+    try {
+      await fetch(`/api/chat-rooms/${roomId}/mark-as-read`, {
+        method: 'POST',
+      })
+    } catch (err) {
+      console.error('既読エラー:', err)
     }
   }
 
@@ -158,34 +196,28 @@ export default function ChatRoom() {
 
   if (loading) {
     return (
-      <Layout>
-        <div className={styles.container}>
-          <p>読み込み中...</p>
-        </div>
-      </Layout>
+      <div className={styles.container}>
+        <p>読み込み中...</p>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <Layout>
-        <div className={styles.container}>
-          <div className={styles.error}>
-            <p>エラー: {error}</p>
-            <button onClick={() => router.back()}>戻る</button>
-          </div>
+      <div className={styles.container}>
+        <div className={styles.error}>
+          <p>エラー: {error}</p>
+          <button onClick={() => router.back()}>戻る</button>
         </div>
-      </Layout>
+      </div>
     )
   }
 
   if (!chatRoom) {
     return (
-      <Layout>
-        <div className={styles.container}>
-          <p>チャットルームが見つかりません</p>
-        </div>
-      </Layout>
+      <div className={styles.container}>
+        <p>チャットルームが見つかりません</p>
+      </div>
     )
   }
 
@@ -196,73 +228,71 @@ export default function ChatRoom() {
       : { email: chatRoom.user1_email, name: chatRoom.user1_name }
 
   return (
-    <Layout>
-      <div className={styles.container}>
-        <div className={styles.chatHeader}>
-          <button onClick={() => router.back()} className={styles.backButton}>
-            ← 戻る
-          </button>
-          <h1>💬 {otherUser.name}とのチャット</h1>
-        </div>
-
-        {notificationPermission === 'default' && (
-          <div style={{ padding: '1rem', backgroundColor: '#fff3cd', borderBottom: '1px solid #ffc107' }}>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#856404' }}>
-              💡 新しいメッセージの通知を受け取るには、ブラウザの通知を許可してください
-            </p>
-          </div>
-        )}
-
-        <div className={styles.messagesContainer}>
-          {messages.length === 0 ? (
-            <p className={styles.noMessages}>
-              まだメッセージがありません。最初のメッセージを送信しましょう！
-            </p>
-          ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`${styles.message} ${
-                  msg.sender_email === session?.user?.email
-                    ? styles.myMessage
-                    : styles.otherMessage
-                }`}
-              >
-                <div className={styles.messageHeader}>
-                  <span className={styles.senderName}>{msg.sender_name}</span>
-                  <span className={styles.timestamp}>
-                    {new Date(msg.created_at).toLocaleString('ja-JP', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </div>
-                <div className={styles.messageContent}>{msg.message}</div>
-              </div>
-            ))
-          )}
-        </div>
-
-        <form onSubmit={handleSendMessage} className={styles.messageForm}>
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="メッセージを入力..."
-            className={styles.messageInput}
-            disabled={sending}
-          />
-          <button
-            type="submit"
-            className={styles.sendButton}
-            disabled={sending || !newMessage.trim()}
-          >
-            {sending ? '送信中...' : '送信'}
-          </button>
-        </form>
+    <div className={styles.container}>
+      <div className={styles.chatHeader}>
+        <button onClick={() => router.back()} className={styles.backButton}>
+          ← 戻る
+        </button>
+        <h1>💬 {otherUser.name}とのチャット</h1>
       </div>
-    </Layout>
+
+      {notificationPermission === 'default' && (
+        <div style={{ padding: '1rem', backgroundColor: '#fff3cd', borderBottom: '1px solid #ffc107' }}>
+          <p style={{ margin: 0, fontSize: '0.9rem', color: '#856404' }}>
+            💡 新しいメッセージの通知を受け取るには、ブラウザの通知を許可してください
+          </p>
+        </div>
+      )}
+
+      <div className={styles.messagesContainer}>
+        {messages.length === 0 ? (
+          <p className={styles.noMessages}>
+            まだメッセージがありません。最初のメッセージを送信しましょう！
+          </p>
+        ) : (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`${styles.message} ${
+                msg.sender_email === session?.user?.email
+                  ? styles.myMessage
+                  : styles.otherMessage
+              }`}
+            >
+              <div className={styles.messageHeader}>
+                <span className={styles.senderName}>{msg.sender_name}</span>
+                <span className={styles.timestamp}>
+                  {new Date(msg.created_at).toLocaleString('ja-JP', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+              <div className={styles.messageContent}>{msg.message}</div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <form onSubmit={handleSendMessage} className={styles.messageForm}>
+        <input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="メッセージを入力..."
+          className={styles.messageInput}
+          disabled={sending}
+        />
+        <button
+          type="submit"
+          className={styles.sendButton}
+          disabled={sending || !newMessage.trim()}
+        >
+          {sending ? '送信中...' : '送信'}
+        </button>
+      </form>
+    </div>
   )
 }

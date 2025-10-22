@@ -399,6 +399,7 @@ export default function JobDetail() {
               <div className="space-y-3">
                 {chatRooms.map((room) => {
                   const otherUser = getOtherUser(room)
+                  const unreadCount = room.unreadCount || 0
                   return (
                     <div
                       key={room.id}
@@ -411,9 +412,16 @@ export default function JobDetail() {
                             {otherUser.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-                              {otherUser.name}
-                            </h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                                {otherUser.name}
+                              </h3>
+                              {unreadCount > 0 && (
+                                <span className="px-2 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full min-w-[24px] text-center">
+                                  {unreadCount > 99 ? '99+' : unreadCount}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-sm text-gray-500">{otherUser.email}</p>
                           </div>
                         </div>

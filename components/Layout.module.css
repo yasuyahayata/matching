@@ -4,102 +4,160 @@
   flex-direction: column;
 }
 
-.header {
-  background-color: #0070f3;
-  color: white;
-  padding: 1rem 0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.headerContent {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
+.nav {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 1rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .logo {
-  text-decoration: none;
-  color: white;
-}
-
-.logo h1 {
-  margin: 0;
   font-size: 1.5rem;
+  font-weight: 800;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s;
+  letter-spacing: 0.5px;
 }
 
-.nav {
+.logo:hover {
+  transform: scale(1.05);
+}
+
+.navLinks {
   display: flex;
-  align-items: center;
   gap: 1.5rem;
+  align-items: center;
 }
 
 .navLink {
   color: white;
-  text-decoration: none;
+  cursor: pointer;
   font-weight: 500;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
 }
 
 .navLink:hover {
-  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
 }
 
-.userInfo {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 0.9rem;
-}
-
-.authButton {
-  background-color: white;
-  color: #0070f3;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+.userName {
+  color: white;
   font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
 }
 
-.authButton:hover {
-  background-color: #f0f0f0;
+.loadingText {
+  color: white;
+  font-size: 0.95rem;
+}
+
+.loginButton,
+.logoutButton {
+  background: white;
+  color: #667eea;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.loginButton:hover,
+.logoutButton:hover {
+  background: #f7fafc;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.signupButton {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.signupButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+}
+
+/* 未読バッジのスタイル */
+.unreadBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ff4444;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  animation: pulse 2s infinite;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 .main {
   flex: 1;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-.footer {
-  background-color: #f8f9fa;
-  padding: 2rem;
-  text-align: center;
-  color: #666;
-  margin-top: auto;
-}
-
-.footer p {
-  margin: 0;
+  background: transparent;
 }
 
 @media (max-width: 768px) {
-  .headerContent {
+  .nav {
     flex-direction: column;
     gap: 1rem;
-    align-items: flex-start;
+    padding: 1rem;
   }
 
-  .nav {
+  .logo {
+    font-size: 1.25rem;
+  }
+
+  .navLinks {
     flex-wrap: wrap;
     gap: 0.75rem;
+    justify-content: center;
   }
 
-  .main {
-    padding: 1rem;
+  .navLink {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .loginButton,
+  .logoutButton,
+  .signupButton {
+    padding: 0.5rem 1.2rem;
+    font-size: 0.9rem;
   }
 }
