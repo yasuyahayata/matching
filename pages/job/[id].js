@@ -19,8 +19,6 @@ export default function JobDetail() {
   // 応募フォームの状態管理
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [applyForm, setApplyForm] = useState({
-    proposed_budget: '',
-    estimated_duration: '',
     message: ''
   })
   const [applying, setApplying] = useState(false)
@@ -36,18 +34,12 @@ export default function JobDetail() {
       setLoading(true)
       
       const jobId = parseInt(id, 10)
-      
-      console.log('案件ID（文字列）:', id)
-      console.log('案件ID（整数）:', jobId)
 
       const { data: jobData, error: jobError } = await supabase
         .from('jobs')
         .select('*')
         .eq('id', jobId)
         .single()
-
-      console.log('案件データ:', jobData)
-      console.log('エラー:', jobError)
 
       if (jobError) {
         console.error('案件取得エラー:', jobError)
@@ -102,20 +94,6 @@ export default function JobDetail() {
     }
   }
 
-  const formatBudget = (budget) => {
-    if (!budget) return '予算相談'
-    return `¥${budget.toLocaleString()}`
-  }
-
-  const formatDate = (date) => {
-    if (!date) return '期限相談'
-    return new Date(date).toLocaleDateString('ja-JP', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
-
   const formatCreatedAt = (date) => {
     if (!date) return ''
     return new Date(date).toLocaleDateString('ja-JP', {
@@ -148,8 +126,8 @@ export default function JobDetail() {
   const handleApplySubmit = async (e) => {
     e.preventDefault()
     
-    if (!applyForm.proposed_budget || !applyForm.estimated_duration || !applyForm.message) {
-      alert('すべての項目を入力してください')
+    if (!applyForm.message) {
+      alert('メッセージを入力してください')
       return
     }
 
@@ -162,8 +140,6 @@ export default function JobDetail() {
           job_id: job.id,
           freelancer_email: session.user.email,
           freelancer_name: session.user.name,
-          proposed_budget: parseInt(applyForm.proposed_budget),
-          estimated_duration: applyForm.estimated_duration,
           message: applyForm.message,
           status: 'pending'
         }])
@@ -172,7 +148,7 @@ export default function JobDetail() {
 
       alert('応募が完了しました！')
       setShowApplyModal(false)
-      setApplyForm({ proposed_budget: '', estimated_duration: '', message: '' })
+      setApplyForm({ message: '' })
     } catch (error) {
       console.error('応募エラー:', error)
       alert('応募に失敗しました: ' + error.message)
@@ -199,6 +175,7 @@ export default function JobDetail() {
         body: JSON.stringify({
           otherUserEmail: job.client_email,
           otherUserName: job.client_name || clientProfile?.full_name || 'クライアント',
+          jobId: job.id
         }),
       })
 
@@ -226,11 +203,10 @@ export default function JobDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
           <p className="mt-4 text-gray-600">読み込み中...</p>
-          <p className="mt-2 text-sm text-gray-500">案件ID: {id || '取得中...'}</p>
         </div>
       </div>
     )
@@ -238,7 +214,7 @@ export default function JobDetail() {
 
   if (!job) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-4">案件が見つかりませんでした</h1>
           <p className="text-gray-600 mb-4">案件ID: {id}</p>
@@ -251,27 +227,7 @@ export default function JobDetail() {
   const isOwnJob = session?.user?.email === job.client_email
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* ナビゲーション */}
-      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              CrowdWork
-            </Link>
-            <div className="flex items-center space-x-6">
-              <Link href="/" className="text-gray-700 hover:text-blue-600 transition-colors">← 案件一覧に戻る</Link>
-              {session && (
-                <>
-                  <Link href="/post-job" className="text-gray-700 hover:text-blue-600 transition-colors">案件投稿</Link>
-                  <Link href="/profile" className="text-gray-700 hover:text-blue-600 transition-colors">プロフィール</Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
+    <>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* メイン情報 */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
@@ -291,16 +247,10 @@ export default function JobDetail() {
           {/* タイトル */}
           <h1 className="text-3xl font-bold text-gray-800 mb-4">{job.title}</h1>
 
-          {/* カテゴリと予算 */}
+          {/* カテゴリ */}
           <div className="flex flex-wrap items-center gap-4 mb-6">
             <span className="px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 rounded-full text-sm font-medium">
               📂 {job.category}
-            </span>
-            <span className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              {formatBudget(job.budget)}
-            </span>
-            <span className="text-gray-600">
-              📅 納期: {formatDate(job.deadline)}
             </span>
           </div>
 
@@ -310,10 +260,10 @@ export default function JobDetail() {
             <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{job.description}</p>
           </div>
 
-          {/* 必要なスキル */}
+          {/* タグ（スキル） */}
           {job.skills && job.skills.length > 0 && (
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-3">必要なスキル</h2>
+              <h2 className="text-xl font-semibold text-gray-800 mb-3">タグ</h2>
               <div className="flex flex-wrap gap-2">
                 {job.skills.map((skill, index) => (
                   <span
@@ -324,16 +274,6 @@ export default function JobDetail() {
                   </span>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* 経験レベル */}
-          {job.experience_level && (
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-3">求める経験レベル</h2>
-              <span className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg font-medium">
-                {job.experience_level}
-              </span>
             </div>
           )}
 
@@ -456,7 +396,7 @@ export default function JobDetail() {
           <h2 className="text-xl font-semibold text-gray-800 mb-4">クライアント情報</h2>
           
           <div className="flex items-start space-x-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
               {clientProfile?.avatar_url ? (
                 <img src={clientProfile.avatar_url} alt={clientProfile.full_name} className="w-16 h-16 rounded-full object-cover" />
               ) : (
@@ -469,24 +409,68 @@ export default function JobDetail() {
                 {clientProfile?.full_name || job.client_name || 'クライアント'}
               </h3>
               
-              {clientProfile?.location && (
-                <p className="text-gray-600 mb-2">📍 {clientProfile.location}</p>
+              {clientProfile?.company_name && (
+                <p className="text-gray-600 mb-2">🏢 {clientProfile.company_name}</p>
               )}
               
               {clientProfile?.bio && (
                 <p className="text-gray-700 mb-3">{clientProfile.bio}</p>
               )}
               
-              {clientProfile?.skills && clientProfile.skills.length > 0 && (
-                <div>
-                  <p className="text-sm text-gray-600 mb-2">スキル:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {clientProfile.skills.slice(0, 5).map((skill, index) => (
-                      <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
+              {clientProfile?.company_website && (
+                <div className="mb-3">
+                  <a href={clientProfile.company_website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                    🔗 {clientProfile.company_website}
+                  </a>
+                </div>
+              )}
+
+              {/* クライアントの強み表示 */}
+              {clientProfile && (
+                <div className="space-y-3 mt-4">
+                  {clientProfile.target_industries && clientProfile.target_industries.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">対象業種:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {clientProfile.target_industries.slice(0, 3).map((industry, index) => (
+                          <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                            {industry}
+                          </span>
+                        ))}
+                        {clientProfile.target_industries.length > 3 && (
+                          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                            +{clientProfile.target_industries.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {clientProfile.job_types && clientProfile.job_types.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">職種:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {clientProfile.job_types.slice(0, 3).map((jobType, index) => (
+                          <span key={index} className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
+                            {jobType}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {clientProfile.expertise_methods && clientProfile.expertise_methods.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-600 mb-1">得意な施策:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {clientProfile.expertise_methods.slice(0, 3).map((method, index) => (
+                          <span key={index} className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                            {method}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -512,44 +496,7 @@ export default function JobDetail() {
               <form onSubmit={handleApplySubmit} className="space-y-6">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="font-semibold text-gray-800 mb-2">{job.title}</h3>
-                  <div className="flex gap-4 text-sm text-gray-600">
-                    <span>予算: {formatBudget(job.budget)}</span>
-                    <span>納期: {formatDate(job.deadline)}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    提案金額 <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">¥</span>
-                    <input
-                      type="number"
-                      required
-                      min="1000"
-                      step="1000"
-                      value={applyForm.proposed_budget}
-                      onChange={(e) => setApplyForm({ ...applyForm, proposed_budget: e.target.value })}
-                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="50000"
-                    />
-                  </div>
-                  <p className="mt-1 text-sm text-gray-500">クライアントの予算: {formatBudget(job.budget)}</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    希望納期 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={applyForm.estimated_duration}
-                    onChange={(e) => setApplyForm({ ...applyForm, estimated_duration: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <p className="mt-1 text-sm text-gray-500">クライアントの希望納期: {formatDate(job.deadline)}</p>
+                  <p className="text-sm text-gray-600">カテゴリ: {job.category}</p>
                 </div>
 
                 <div>
@@ -558,7 +505,7 @@ export default function JobDetail() {
                   </label>
                   <textarea
                     required
-                    rows="6"
+                    rows="8"
                     value={applyForm.message}
                     onChange={(e) => setApplyForm({ ...applyForm, message: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -587,6 +534,6 @@ export default function JobDetail() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
