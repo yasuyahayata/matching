@@ -56,7 +56,6 @@ const tagCategories = {
     'UGC活用',
     'インフルエンサー連携'
   ],
- 
   'スキル・専門分野別': [
     'プログラミング',
     'デザイン',
@@ -112,17 +111,12 @@ export default function PostJob() {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
-    budget: 50000,
-    deadline: '',
     description: '',
-    tags: [],
-    experience_level: '初級'
+    tags: []
   })
   
   const [selectedMainCategory, setSelectedMainCategory] = useState(null)
   const [selectedSkillCategory, setSelectedSkillCategory] = useState(null)
-
-  const experienceLevels = ['初級', '中級', '上級']
 
   if (!session) {
     return (
@@ -141,26 +135,6 @@ export default function PostJob() {
     setFormData(prev => ({
       ...prev,
       [name]: value
-    }))
-  }
-
-  const handleBudgetChange = (e) => {
-    const value = parseInt(e.target.value)
-    const roundedValue = Math.round(value / 1000) * 1000
-    setFormData(prev => ({
-      ...prev,
-      budget: roundedValue
-    }))
-  }
-
-  const handleBudgetInputChange = (e) => {
-    const value = e.target.value.replace(/[^0-9]/g, '')
-    const numValue = parseInt(value) || 5000
-    let constrainedValue = Math.max(5000, Math.min(500000, numValue))
-    constrainedValue = Math.round(constrainedValue / 1000) * 1000
-    setFormData(prev => ({
-      ...prev,
-      budget: constrainedValue
     }))
   }
 
@@ -230,7 +204,6 @@ export default function PostJob() {
     setLoading(true)
 
     try {
-      // categoryは最初に選択されたタグまたはデフォルト値を使用
       const category = formData.tags.length > 0 ? formData.tags[0] : 'その他'
 
       const { data, error } = await supabase
@@ -239,11 +212,8 @@ export default function PostJob() {
           {
             title: formData.title,
             category: category,
-            budget: formData.budget,
-            deadline: formData.deadline || null,
             description: formData.description,
             skills: formData.tags,
-            experience_level: formData.experience_level,
             client_email: session.user.email,
             client_name: session.user.name || session.user.email,
             status: '募集中'
@@ -419,84 +389,6 @@ export default function PostJob() {
             </p>
           </div>
 
-          {/* 予算スライダー */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              予算 <span className="text-red-500">*</span>
-            </label>
-            
-            <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">選択中の予算:</span>
-                <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-                  ¥{formData.budget.toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <input
-                type="range"
-                min="5000"
-                max="500000"
-                step="1000"
-                value={formData.budget}
-                onChange={handleBudgetChange}
-                className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((formData.budget - 5000) / (500000 - 5000)) * 100}%, #e5e7eb ${((formData.budget - 5000) / (500000 - 5000)) * 100}%, #e5e7eb 100%)`
-                }}
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-2">
-                <span>¥5,000</span>
-                <span>¥250,000</span>
-                <span>¥500,000</span>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">または直接入力:</span>
-              <input
-                type="text"
-                value={`¥${formData.budget.toLocaleString()}`}
-                onChange={handleBudgetInputChange}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-right font-semibold"
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-2">※ 1,000円単位で自動調整されます（最低¥5,000〜最高¥500,000）</p>
-          </div>
-
-          {/* 納期 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              納期
-            </label>
-            <input
-              type="date"
-              name="deadline"
-              value={formData.deadline}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* 経験レベル */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              経験レベル
-            </label>
-            <select
-              name="experience_level"
-              value={formData.experience_level}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              {experienceLevels.map(level => (
-                <option key={level} value={level}>{level}</option>
-              ))}
-            </select>
-          </div>
-
           {/* 案件詳細 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -507,7 +399,7 @@ export default function PostJob() {
               value={formData.description}
               onChange={handleInputChange}
               required
-              rows="6"
+              rows="8"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="案件の詳細を記入してください"
             />
