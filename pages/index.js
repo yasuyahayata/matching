@@ -9,6 +9,7 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMainCategory, setSelectedMainCategory] = useState(null);
   const [selectedSubCategories, setSelectedSubCategories] = useState([]);
+  const [selectedSkillCategory, setSelectedSkillCategory] = useState(null);
   const router = useRouter();
 
   // タグカテゴリーの定義
@@ -44,6 +45,53 @@ export default function Home() {
       'エンゲージメント向上',
       'LTV向上',
       '口コミ促進'
+    ],
+    'スキル・専門分野別': [
+      'プログラミング',
+      'デザイン',
+      '動画・映像',
+      'ライティング',
+      'マーケティング',
+      'データ分析',
+      'プロジェクト管理'
+    ]
+  };
+
+  // スキル・専門分野の詳細（3階層目）
+  const skillDetails = {
+    'プログラミング': [
+      'JavaScript', 'TypeScript', 'React', 'Vue.js', 'Angular',
+      'Python', 'Java', 'PHP', 'Ruby', 'Go', 'Swift', 'Kotlin',
+      'Node.js', 'Next.js', 'Nuxt.js', 'Django', 'Laravel'
+    ],
+    'デザイン': [
+      'Illustrator', 'Photoshop', 'Figma', 'Adobe XD', 'Sketch',
+      'InDesign', 'After Effects', 'Canva', 'UI/UXデザイン',
+      'グラフィックデザイン', 'ロゴデザイン', 'Webデザイン'
+    ],
+    '動画・映像': [
+      'Premiere Pro', 'After Effects', 'Final Cut Pro', 'DaVinci Resolve',
+      '動画編集', 'モーショングラフィックス', 'アニメーション',
+      'YouTube編集', 'TikTok編集', '撮影', '字幕作成'
+    ],
+    'ライティング': [
+      'SEOライティング', 'コピーライティング', 'セールスライティング',
+      'コンテンツライティング', '技術文書作成', '翻訳（英日）',
+      '翻訳（日英）', '校正', '編集', 'ブログ執筆'
+    ],
+    'マーケティング': [
+      'Google Analytics', 'SEO', 'SEM', 'SNS運用',
+      'Facebook広告', 'Google広告', 'Instagram運用', 'Twitter運用',
+      'コンテンツマーケティング', 'メールマーケティング', 'アフィリエイト'
+    ],
+    'データ分析': [
+      'Excel', 'Google Sheets', 'SQL', 'Python（分析）',
+      'Tableau', 'Power BI', 'Google Data Studio',
+      'R言語', 'データビジュアライゼーション'
+    ],
+    'プロジェクト管理': [
+      'Notion', 'Slack', 'Trello', 'Asana', 'Jira',
+      'Backlog', 'Monday.com', 'アジャイル', 'スクラム'
     ]
   };
 
@@ -69,13 +117,22 @@ export default function Home() {
   const handleMainCategoryClick = (category) => {
     if (selectedMainCategory === category) {
       setSelectedMainCategory(null);
+      setSelectedSkillCategory(null);
     } else {
       setSelectedMainCategory(category);
+      setSelectedSkillCategory(null);
     }
   };
 
   // サブカテゴリーをクリックした時の処理
   const handleSubCategoryClick = (subCategory) => {
+    // スキル・専門分野別の場合は、詳細スキルを表示
+    if (selectedMainCategory === 'スキル・専門分野別' && skillDetails[subCategory]) {
+      setSelectedSkillCategory(subCategory);
+      return;
+    }
+
+    // 通常のサブカテゴリー選択
     if (selectedSubCategories.includes(subCategory)) {
       setSelectedSubCategories(selectedSubCategories.filter(cat => cat !== subCategory));
     } else {
@@ -83,23 +140,35 @@ export default function Home() {
     }
   };
 
+  // 詳細スキルをクリックした時の処理
+  const handleDetailSkillClick = (skill) => {
+    if (selectedSubCategories.includes(skill)) {
+      setSelectedSubCategories(selectedSubCategories.filter(s => s !== skill));
+    } else {
+      setSelectedSubCategories([...selectedSubCategories, skill]);
+    }
+  };
+
+  // スキルカテゴリーに戻る
+  const backToSkillCategories = () => {
+    setSelectedSkillCategory(null);
+  };
+
   // タグをクリアする
   const clearAllTags = () => {
     setSelectedSubCategories([]);
     setSelectedMainCategory(null);
+    setSelectedSkillCategory(null);
   };
 
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.description.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // サブカテゴリーが選択されていない場合は検索のみ
     if (selectedSubCategories.length === 0) {
       return matchesSearch;
     }
     
-    // サブカテゴリーでフィルタリング（今後、jobsテーブルにタグカラムを追加する必要があります）
-    // 現在は仮の実装
     return matchesSearch;
   });
 
@@ -144,8 +213,8 @@ export default function Home() {
           ))}
         </div>
 
-        {/* サブカテゴリー */}
-        {selectedMainCategory && (
+        {/* サブカテゴリー（2階層目） */}
+        {selectedMainCategory && !selectedSkillCategory && (
           <div className={styles.subCategories}>
             {tagCategories[selectedMainCategory].map(subCategory => (
               <button
@@ -156,11 +225,41 @@ export default function Home() {
                 }`}
               >
                 {subCategory}
+                {selectedMainCategory === 'スキル・専門分野別' && skillDetails[subCategory] && (
+                  <span className={styles.arrowRight}>→</span>
+                )}
                 {selectedSubCategories.includes(subCategory) && (
                   <span className={styles.checkmark}>✓</span>
                 )}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* 詳細スキル（3階層目） */}
+        {selectedSkillCategory && (
+          <div className={styles.skillDetails}>
+            <div className={styles.skillDetailsHeader}>
+              <button onClick={backToSkillCategories} className={styles.backButton}>
+                ← {selectedSkillCategory}
+              </button>
+            </div>
+            <div className={styles.detailSkills}>
+              {skillDetails[selectedSkillCategory].map(skill => (
+                <button
+                  key={skill}
+                  onClick={() => handleDetailSkillClick(skill)}
+                  className={`${styles.detailSkillButton} ${
+                    selectedSubCategories.includes(skill) ? styles.detailSkillButtonActive : ''
+                  }`}
+                >
+                  {skill}
+                  {selectedSubCategories.includes(skill) && (
+                    <span className={styles.checkmark}>✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -172,7 +271,9 @@ export default function Home() {
               <span key={tag} className={styles.selectedTag}>
                 {tag}
                 <button
-                  onClick={() => handleSubCategoryClick(tag)}
+                  onClick={() => {
+                    setSelectedSubCategories(selectedSubCategories.filter(t => t !== tag));
+                  }}
                   className={styles.removeTagButton}
                 >
                   ×

@@ -399,3 +399,79 @@
     justify-content: center;
   }
 }
+
+/* 詳細スキル（3階層目） */
+.skillDetails {
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  animation: slideDown 0.3s ease;
+}
+
+.skillDetailsHeader {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.backButton {
+  padding: 0.5rem 1rem;
+  background: #f7fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a5568;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.backButton:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+}
+
+.detailSkills {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.detailSkillButton {
+  padding: 0.6rem 1.2rem;
+  border: 2px solid #e2e8f0;
+  background: #f7fafc;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #4a5568;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.detailSkillButton:hover {
+  border-color: #667eea;
+  background: #edf2f7;
+  color: #667eea;
+}
+
+.detailSkillButtonActive {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  border-color: transparent;
+}
+
+.detailSkillButtonActive:hover {
+  background: linear-gradient(135deg, #e082ea 0%, #e4465b 100%);
+  color: white;
+}
+
+.arrowRight {
+  font-size: 0.85rem;
+  margin-left: 0.25rem;
+}
