@@ -16,6 +16,11 @@ export default function JobDetail() {
   const [chatRooms, setChatRooms] = useState([])
   const [loadingChats, setLoadingChats] = useState(false)
 
+  // 🆕 応募状態の管理
+  const [hasApplied, setHasApplied] = useState(false)
+  const [applicationStatus, setApplicationStatus] = useState(null)
+  const [checkingApplication, setCheckingApplication] = useState(false)
+
   // 応募フォームの状態管理
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [applyForm, setApplyForm] = useState({
@@ -26,6 +31,13 @@ export default function JobDetail() {
   useEffect(() => {
     if (id) {
       loadJobDetail()
+    }
+  }, [id, session])
+
+  // 🆕 応募状態をチェック
+  useEffect(() => {
+    if (id && session && !checkingApplication) {
+      checkApplicationStatus()
     }
   }, [id, session])
 
@@ -75,6 +87,24 @@ export default function JobDetail() {
     }
   }
 
+  // 🆕 応募状態をチェック
+  const checkApplicationStatus = async () => {
+    try {
+      setCheckingApplication(true)
+      const res = await fetch(`/api/jobs/${id}/check-application`)
+      
+      if (res.ok) {
+        const data = await res.json()
+        setHasApplied(data.hasApplied)
+        setApplicationStatus(data.application?.status || null)
+      }
+    } catch (error) {
+      console.error('応募状態チェックエラー:', error)
+    } finally {
+      setCheckingApplication(false)
+    }
+  }
+
   // 💬 新機能: チャットルーム一覧を取得
   const loadChatRooms = async (jobId) => {
     try {
@@ -120,6 +150,12 @@ export default function JobDetail() {
       return
     }
 
+    // 🆕 既に応募済みの場合
+    if (hasApplied) {
+      alert('この案件には既に応募済みです')
+      return
+    }
+
     setShowApplyModal(true)
   }
 
@@ -128,6 +164,13 @@ export default function JobDetail() {
     
     if (!applyForm.message) {
       alert('メッセージを入力してください')
+      return
+    }
+
+    // 🆕 二重応募チェック
+    if (hasApplied) {
+      alert('この案件には既に応募済みです')
+      setShowApplyModal(false)
       return
     }
 
@@ -144,11 +187,25 @@ export default function JobDetail() {
           status: 'pending'
         }])
 
-      if (error) throw error
+      if (error) {
+        // 🆕 ユニーク制約エラーの場合
+        if (error.code === '23505') {
+          alert('この案件には既に応募済みです')
+          setHasApplied(true)
+          setShowApplyModal(false)
+          return
+        }
+        throw error
+      }
 
       alert('応募が完了しました！')
       setShowApplyModal(false)
       setApplyForm({ message: '' })
+      
+      // 🆕 応募状態を更新
+      setHasApplied(true)
+      setApplicationStatus('pending')
+      
     } catch (error) {
       console.error('応募エラー:', error)
       alert('応募に失敗しました: ' + error.message)
@@ -201,6 +258,37 @@ export default function JobDetail() {
     return { email: room.user1_email, name: room.user1_name }
   }
 
+  // 🆕 応募ボタンのテキストとスタイルを取得
+  const getApplyButtonConfig = () => {
+    if (!session) {
+      return {
+        text: '📝 この案件に応募する',
+        disabled: false,
+        className: 'flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-8 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg'
+      }
+    }
+
+    if (hasApplied) {
+      const statusText = {
+        'pending': '✓ 応募済み（審査中）',
+        'approved': '✓ 承認されました',
+        'rejected': '× 不承認'
+      }[applicationStatus] || '✓ 応募済み'
+
+      return {
+        text: statusText,
+        disabled: true,
+        className: 'flex-1 bg-gray-400 text-white py-4 px-8 rounded-lg font-semibold text-lg cursor-not-allowed'
+      }
+    }
+
+    return {
+      text: '📝 この案件に応募する',
+      disabled: false,
+      className: 'flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-8 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg'
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -225,6 +313,7 @@ export default function JobDetail() {
   }
 
   const isOwnJob = session?.user?.email === job.client_email
+  const applyButtonConfig = getApplyButtonConfig()
 
   return (
     <>
@@ -282,9 +371,10 @@ export default function JobDetail() {
             <div className="flex gap-4 pt-6 border-t border-gray-200">
               <button
                 onClick={handleApply}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-8 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg"
+                disabled={applyButtonConfig.disabled}
+                className={applyButtonConfig.className}
               >
-                📝 この案件に応募する
+                {applyButtonConfig.text}
               </button>
               <button
                 onClick={handleStartChat}

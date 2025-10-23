@@ -89,7 +89,8 @@ export default function MessagesPage() {
         <div className={styles.emptyState}>
           <p>まだメッセージがありません</p>
           <p className={styles.hint}>
-            案件詳細ページから💬ボタンを押してチャットを開始できます
+            案件詳細ページから💬ボタンを押してチャットを開始するか、
+            マッチングした案件からメッセージを送信してください
           </p>
         </div>
       ) : (
@@ -97,6 +98,8 @@ export default function MessagesPage() {
           {chatRooms.map((room) => {
             const otherUser = getOtherUser(room)
             const unreadCount = unreadByRoom[room.id] || 0
+            const jobTitle = room.jobs?.title || '案件情報なし'
+            const jobCategory = room.jobs?.category || ''
             
             return (
               <div
@@ -105,6 +108,15 @@ export default function MessagesPage() {
                 onClick={() => router.push(`/chat/${room.id}`)}
               >
                 <div className={styles.chatInfo}>
+                  {/* 案件情報を表示 */}
+                  <div className={styles.jobBadge}>
+                    {jobCategory && (
+                      <span className={styles.category}>{jobCategory}</span>
+                    )}
+                    <span className={styles.jobTitle}>📋 {jobTitle}</span>
+                  </div>
+
+                  {/* ユーザー情報を表示 */}
                   <div className={styles.chatHeader}>
                     <h3>{otherUser.name}</h3>
                     {unreadCount > 0 && (
@@ -114,7 +126,17 @@ export default function MessagesPage() {
                     )}
                   </div>
                   <p className={styles.email}>{otherUser.email}</p>
+
+                  {/* 最新メッセージを表示 */}
+                  {room.latestMessage && (
+                    <p className={styles.latestMessage}>
+                      {room.latestMessage.message.length > 50
+                        ? `${room.latestMessage.message.substring(0, 50)}...`
+                        : room.latestMessage.message}
+                    </p>
+                  )}
                 </div>
+
                 <div className={styles.chatMeta}>
                   <span className={styles.timestamp}>
                     {new Date(room.updated_at).toLocaleDateString('ja-JP', {

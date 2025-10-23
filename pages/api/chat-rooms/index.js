@@ -20,10 +20,18 @@ export default async function handler(req, res) {
     const currentUserName = session.user.name || session.user.email;
 
     if (req.method === 'GET') {
-      // 自分が参加している全てのチャットルームを取得
+      // 自分が参加している全てのチャットルームを取得（案件情報も含める）
       const { data: rooms, error } = await supabase
         .from('chat_rooms')
-        .select('*')
+        .select(`
+          *,
+          jobs (
+            id,
+            title,
+            category,
+            status
+          )
+        `)
         .or(`user1_email.eq.${currentUserEmail},user2_email.eq.${currentUserEmail}`)
         .order('updated_at', { ascending: false });
 
@@ -32,7 +40,52 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'チャットルームの取得に失敗しました' });
       }
 
-      return res.status(200).json(rooms || []);
+      // 各チャットルームのメッセージ数と最新メッセージを取得
+      const roomsWithMessages = await Promise.all(
+        (rooms || []).map(async (room) => {
+          try {
+            // メッセージ数を取得（chat_room_idに修正）
+            const { count, error: countError } = await supabase
+              .from('messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('chat_room_id', room.id);
+
+            if (countError) {
+              console.error('メッセージ数取得エラー:', countError);
+              return { ...room, messageCount: 0, latestMessage: null };
+            }
+
+            // 最新メッセージを取得（メッセージが存在する場合のみ）
+            let latestMessage = null;
+            if (count > 0) {
+              const { data: msgData, error: msgError } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('chat_room_id', room.id)
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+              if (!msgError && msgData && msgData.length > 0) {
+                latestMessage = msgData[0];
+              }
+            }
+
+            return {
+              ...room,
+              messageCount: count || 0,
+              latestMessage: latestMessage
+            };
+          } catch (err) {
+            console.error('チャットルーム処理エラー:', err);
+            return { ...room, messageCount: 0, latestMessage: null };
+          }
+        })
+      );
+
+      // メッセージが1件以上あるチャットルームのみ返す
+      const roomsWithContent = roomsWithMessages.filter(room => room.messageCount > 0);
+
+      return res.status(200).json(roomsWithContent);
     }
 
     if (req.method === 'POST') {
