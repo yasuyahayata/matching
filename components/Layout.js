@@ -73,9 +73,7 @@ export default function Layout({ children }) {
               <Link href="/">
                 <span className={styles.navLink}>案件一覧</span>
               </Link>
-              <Link href="/matching">
-                <span className={styles.navLink}>🤝 マッチング</span>
-              </Link>
+              {/* マッチングタブを削除 */}
               <Link href="/messages">
                 <span className={styles.navLink}>
                   💬 メッセージ

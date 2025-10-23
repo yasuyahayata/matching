@@ -46,6 +46,7 @@ export default async function handler(req, res) {
       `)
       .eq('status', 'approved')
       .eq('freelancer_email', currentUserEmail)
+      .not('chat_room_id', 'is', null)
       .order('updated_at', { ascending: false });
 
     if (error1) {
@@ -77,39 +78,69 @@ export default async function handler(req, res) {
       `)
       .eq('status', 'approved')
       .eq('jobs.client_email', currentUserEmail)
+      .not('chat_room_id', 'is', null)
       .order('updated_at', { ascending: false });
 
     if (error2) {
       console.error('クライアント側取得エラー:', error2);
     }
 
-    // 2つのデータを結合
+    // チャットルーム情報とメッセージを取得
     const allApplications = [
       ...(asFreelancer || []),
       ...(asClient || [])
     ];
 
-    // データを整形して返す
-    const matchings = allApplications
-      .filter(app => app.jobs)
-      .map(app => ({
-        applicationId: app.id,
-        jobId: app.job_id,
-        jobTitle: app.jobs.title,
-        jobDescription: app.jobs.description,
-        jobCategory: app.jobs.category,
-        jobStatus: app.jobs.status,
-        clientEmail: app.jobs.client_email,
-        clientName: app.jobs.client_name,
-        freelancerEmail: app.freelancer_email,
-        freelancerName: app.freelancer_name,
-        chatRoomId: app.chat_room_id,
-        matchedAt: app.updated_at,
-        isClient: app.jobs.client_email === currentUserEmail,
-      }))
-      .sort((a, b) => new Date(b.matchedAt) - new Date(a.matchedAt)); // 日付でソート
+    const matchingsWithMessages = await Promise.all(
+      allApplications.map(async (app) => {
+        if (!app.chat_room_id) return null;
 
-    return res.status(200).json(matchings);
+        // チャットルーム情報を取得
+        const { data: room } = await supabase
+          .from('chat_rooms')
+          .select('*')
+          .eq('id', app.chat_room_id)
+          .single();
+
+        // 最新メッセージを取得
+        const { data: latestMessage } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('chat_room_id', app.chat_room_id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        // 未読数を取得
+        const { count: unreadCount } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('chat_room_id', app.chat_room_id)
+          .eq('is_read', false)
+          .neq('sender_email', currentUserEmail);
+
+        return {
+          chatRoomId: app.chat_room_id,
+          jobId: app.job_id,
+          jobTitle: app.jobs?.title || '案件情報なし',
+          jobCategory: app.jobs?.category || '',
+          clientEmail: app.jobs?.client_email,
+          clientName: app.jobs?.client_name,
+          freelancerEmail: app.freelancer_email,
+          freelancerName: app.freelancer_name,
+          isClient: app.jobs?.client_email === currentUserEmail,
+          latestMessage: latestMessage?.[0] || null,
+          unreadCount: unreadCount || 0,
+          updatedAt: room?.updated_at || app.updated_at,
+          room: room
+        };
+      })
+    );
+
+    const validMatchings = matchingsWithMessages
+      .filter(m => m !== null)
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+    return res.status(200).json(validMatchings);
 
   } catch (error) {
     console.error('API Error:', error);
