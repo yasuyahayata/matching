@@ -6,8 +6,8 @@ import styles from '../styles/Messages.module.css'
 export default function MessagesPage() {
   const router = useRouter()
   const { data: session, status } = useSession()
-  const [activeMainTab, setActiveMainTab] = useState('matched') // 'matched' or 'inquiry'
-  const [activeSubTab, setActiveSubTab] = useState('client') // 'client' or 'freelancer'
+  const [activeMainTab, setActiveMainTab] = useState('matched')
+  const [activeSubTab, setActiveSubTab] = useState('client')
   
   const [matchedChats, setMatchedChats] = useState([])
   const [inquiryChats, setInquiryChats] = useState([])
@@ -31,14 +31,12 @@ export default function MessagesPage() {
     try {
       setLoading(true)
       
-      // マッチング済みチャットを取得
       const matchedRes = await fetch('/api/messages/matched')
       if (matchedRes.ok) {
         const matchedData = await matchedRes.json()
         setMatchedChats(matchedData)
       }
 
-      // 問い合わせチャットを取得
       const inquiryRes = await fetch('/api/chat-rooms')
       if (inquiryRes.ok) {
         const inquiryData = await inquiryRes.json()
@@ -94,16 +92,14 @@ export default function MessagesPage() {
     return { email: room.user1_email, name: room.user1_name }
   }
 
-  // マッチング済みチャットをフィルタリング
   const filteredMatchedChats = matchedChats.filter(chat => {
     if (activeSubTab === 'client') {
-      return chat.isClient // 発注側
+      return chat.isClient
     } else {
-      return !chat.isClient // 受注側
+      return !chat.isClient
     }
   })
 
-  // 各タブの件数を計算
   const clientCount = matchedChats.filter(c => c.isClient).length
   const freelancerCount = matchedChats.filter(c => !c.isClient).length
 
@@ -114,7 +110,6 @@ export default function MessagesPage() {
         <p className={styles.subtitle}>案件のやり取りを管理</p>
       </div>
 
-      {/* メインタブ */}
       <div className={styles.mainTabs}>
         <button
           className={`${styles.mainTab} ${activeMainTab === 'matched' ? styles.mainTabActive : ''}`}
@@ -138,10 +133,8 @@ export default function MessagesPage() {
         </button>
       </div>
 
-      {/* マッチングタブの内容 */}
       {activeMainTab === 'matched' && (
         <>
-          {/* サブタブ */}
           <div className={styles.subTabs}>
             <button
               className={`${styles.subTab} ${activeSubTab === 'client' ? styles.subTabActive : ''}`}
@@ -165,7 +158,6 @@ export default function MessagesPage() {
             </button>
           </div>
 
-          {/* マッチング済みチャット一覧 */}
           {filteredMatchedChats.length === 0 ? (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>
@@ -193,15 +185,11 @@ export default function MessagesPage() {
                     onClick={() => router.push(`/chat/${chat.chatRoomId}`)}
                   >
                     <div className={styles.chatInfo}>
-                      {/* 案件情報 */}
+                      {/* 案件タイトルのみ表示（カテゴリ削除） */}
                       <div className={styles.jobBadge}>
-                        {chat.jobCategory && (
-                          <span className={styles.category}>{chat.jobCategory}</span>
-                        )}
                         <span className={styles.jobTitle}>📋 {chat.jobTitle}</span>
                       </div>
 
-                      {/* ユーザー情報 */}
                       <div className={styles.chatHeader}>
                         <div className={styles.userInfo}>
                           <div className={styles.avatar}>
@@ -220,15 +208,6 @@ export default function MessagesPage() {
                           </span>
                         )}
                       </div>
-
-                      {/* 最新メッセージ */}
-                      {chat.latestMessage && (
-                        <p className={styles.latestMessage}>
-                          {chat.latestMessage.message.length > 50
-                            ? `${chat.latestMessage.message.substring(0, 50)}...`
-                            : chat.latestMessage.message}
-                        </p>
-                      )}
                     </div>
 
                     <div className={styles.chatMeta}>
@@ -248,7 +227,6 @@ export default function MessagesPage() {
         </>
       )}
 
-      {/* 問い合わせタブの内容 */}
       {activeMainTab === 'inquiry' && (
         <>
           {inquiryChats.length === 0 ? (
@@ -265,7 +243,6 @@ export default function MessagesPage() {
                 const otherUser = getOtherUser(room)
                 const unreadCount = unreadByRoom[room.id] || 0
                 const jobTitle = room.jobs?.title || '案件情報なし'
-                const jobCategory = room.jobs?.category || ''
                 
                 return (
                   <div
@@ -274,15 +251,11 @@ export default function MessagesPage() {
                     onClick={() => router.push(`/chat/${room.id}`)}
                   >
                     <div className={styles.chatInfo}>
-                      {/* 案件情報 */}
+                      {/* 案件タイトルのみ表示（カテゴリ削除） */}
                       <div className={styles.jobBadge}>
-                        {jobCategory && (
-                          <span className={styles.category}>{jobCategory}</span>
-                        )}
                         <span className={styles.jobTitle}>📋 {jobTitle}</span>
                       </div>
 
-                      {/* ユーザー情報 */}
                       <div className={styles.chatHeader}>
                         <div className={styles.userInfo}>
                           <div className={styles.avatar}>
@@ -299,15 +272,6 @@ export default function MessagesPage() {
                           </span>
                         )}
                       </div>
-
-                      {/* 最新メッセージ */}
-                      {room.latestMessage && (
-                        <p className={styles.latestMessage}>
-                          {room.latestMessage.message.length > 50
-                            ? `${room.latestMessage.message.substring(0, 50)}...`
-                            : room.latestMessage.message}
-                        </p>
-                      )}
                     </div>
 
                     <div className={styles.chatMeta}>
