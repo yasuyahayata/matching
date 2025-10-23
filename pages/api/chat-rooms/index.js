@@ -43,6 +43,10 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: '相手のメールアドレスと名前が必要です' });
       }
 
+      if (!jobId) {
+        return res.status(400).json({ error: 'ジョブIDが必要です' });
+      }
+
       // 自分自身とはチャットできない
       if (otherUserEmail === currentUserEmail) {
         return res.status(400).json({ error: '自分自身とチャットすることはできません' });
@@ -54,21 +58,14 @@ export default async function handler(req, res) {
           ? [currentUserEmail, currentUserName, otherUserEmail, otherUserName]
           : [otherUserEmail, otherUserName, currentUserEmail, currentUserName];
 
-      // 既存のチャットルームがあるか確認（job_idも条件に追加）
-      let existingRoomQuery = supabase
+      // 既存のチャットルームがあるか確認（同じユーザーペア + 同じjob_id）
+      const { data: existingRoom } = await supabase
         .from('chat_rooms')
         .select('*')
         .eq('user1_email', user1Email)
-        .eq('user2_email', user2Email);
-
-      // jobIdが指定されている場合は、同じjobIdのルームを探す
-      if (jobId) {
-        existingRoomQuery = existingRoomQuery.eq('job_id', jobId);
-      } else {
-        existingRoomQuery = existingRoomQuery.is('job_id', null);
-      }
-
-      const { data: existingRoom } = await existingRoomQuery.single();
+        .eq('user2_email', user2Email)
+        .eq('job_id', jobId)
+        .single();
 
       if (existingRoom) {
         // 既存のルームを返す
@@ -81,12 +78,8 @@ export default async function handler(req, res) {
         user1_name: user1Name,
         user2_email: user2Email,
         user2_name: user2Name,
+        job_id: jobId,
       };
-
-      // jobIdが指定されている場合のみ追加
-      if (jobId) {
-        roomData.job_id = jobId;
-      }
 
       const { data: newRoom, error: createError } = await supabase
         .from('chat_rooms')

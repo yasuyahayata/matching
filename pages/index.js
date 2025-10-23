@@ -75,7 +75,6 @@ const tagCategories = {
   ]
 };
 
-
   // スキル・専門分野の詳細（3階層目）
   const skillDetails = {
     'プログラミング': [
@@ -188,7 +187,13 @@ const tagCategories = {
       return matchesSearch;
     }
     
-    return matchesSearch;
+    // スキルタグでフィルタリング
+    const jobSkills = job.skills || [];
+    const hasMatchingSkill = selectedSubCategories.some(selectedTag => 
+      jobSkills.includes(selectedTag)
+    );
+    
+    return matchesSearch && hasMatchingSkill;
   });
 
   return (
@@ -311,16 +316,26 @@ const tagCategories = {
           <Link href={`/job/${job.id}`} key={job.id} className={styles.jobCard}>
             <div className={styles.jobCategory}>{job.category}</div>
             <h3 className={styles.jobTitle}>{job.title}</h3>
-            <p className={styles.jobDescription}>{job.description}</p>
-            <div className={styles.jobFooter}>
-              <span className={styles.jobBudget}>¥{job.budget?.toLocaleString()}</span>
-              <span className={styles.jobDeadline}>
-                期限: {new Date(job.deadline).toLocaleDateString('ja-JP')}
-              </span>
-            </div>
-            <div className={styles.jobApplications}>
-              提案数: {job.application_count || 0}件
-            </div>
+            <p className={styles.jobDescription}>
+              {job.description.length > 150 
+                ? `${job.description.substring(0, 150)}...` 
+                : job.description}
+            </p>
+            
+            {/* スキルタグ表示 */}
+            {job.skills && job.skills.length > 0 && (
+              <div className={styles.jobSkills}>
+                {job.skills.slice(0, 3).map((skill, index) => (
+                  <span key={index} className={styles.skillTag}>
+                    {skill}
+                  </span>
+                ))}
+                {job.skills.length > 3 && (
+                  <span className={styles.skillTag}>+{job.skills.length - 3}</span>
+                )}
+              </div>
+            )}
+            
             <button className={styles.jobDetailButton}>詳細を見る</button>
           </Link>
         ))}
