@@ -314,29 +314,43 @@ const tagCategories = {
       <div className={styles.jobsGrid}>
         {filteredJobs.map(job => (
           <Link href={`/job/${job.id}`} key={job.id} className={styles.jobCard}>
-            <div className={styles.jobCategory}>{job.category}</div>
+            {/* 1. ユーザー名 */}
+            <div className={styles.clientInfo}>
+              <div className={styles.clientAvatar}>
+                {(job.client_name?.charAt(0) || 'U').toUpperCase()}
+              </div>
+              <div className={styles.clientDetails}>
+                <span className={styles.clientName}>{job.client_name || '匿名ユーザー'}</span>
+                <span className={styles.clientLabel}>投稿者</span>
+              </div>
+            </div>
+
+            {/* 2. 案件のタイトル */}
             <h3 className={styles.jobTitle}>{job.title}</h3>
+
+            {/* 3. 詳細（説明文） */}
             <p className={styles.jobDescription}>
-              {job.description.length > 150 
-                ? `${job.description.substring(0, 150)}...` 
+              {job.description.length > 120 
+                ? `${job.description.substring(0, 120)}...` 
                 : job.description}
             </p>
-            
-            {/* スキルタグ表示 */}
+
+            {/* 4. 選択されたタグ一覧 */}
             {job.skills && job.skills.length > 0 && (
               <div className={styles.jobSkills}>
-                {job.skills.slice(0, 3).map((skill, index) => (
+                {job.skills.slice(0, 4).map((skill, index) => (
                   <span key={index} className={styles.skillTag}>
                     {skill}
                   </span>
                 ))}
-                {job.skills.length > 3 && (
-                  <span className={styles.skillTag}>+{job.skills.length - 3}</span>
+                {job.skills.length > 4 && (
+                  <span className={styles.skillTag}>+{job.skills.length - 4}</span>
                 )}
               </div>
             )}
-            
-            <button className={styles.jobDetailButton}>詳細を見る</button>
+
+            {/* 5. 詳細を見るボタン */}
+            <button className={styles.jobDetailButton}>詳細を見る →</button>
           </Link>
         ))}
       </div>
