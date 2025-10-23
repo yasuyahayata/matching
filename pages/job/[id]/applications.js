@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
-// import Layout from '../../../components/Layout'; // ← この行を削除
 import styles from '../../../styles/Applications.module.css';
 
 export default function ApplicationsPage() {
@@ -75,7 +74,7 @@ export default function ApplicationsPage() {
         throw new Error(data.error || 'ステータスの更新に失敗しました');
       }
 
-      alert(newStatus === 'approved' ? '応募を承認しました' : '応募を却下しました');
+      alert(newStatus === 'approved' ? '応募を承認しました！チャットルームが作成されました。' : '応募を却下しました');
       await fetchJobAndApplications();
       
     } catch (err) {
@@ -102,7 +101,6 @@ export default function ApplicationsPage() {
     );
   };
 
-  // ログインチェック - Layoutを削除
   if (status === 'loading' || loading) {
     return (
       <div className={styles.container}>
@@ -130,7 +128,6 @@ export default function ApplicationsPage() {
     );
   }
 
-  // メインコンテンツ - Layoutを削除
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -143,10 +140,6 @@ export default function ApplicationsPage() {
       {job && (
         <div className={styles.jobInfo}>
           <h2>{job.title}</h2>
-          <p className={styles.jobMeta}>
-            予算: ¥{job.budget?.toLocaleString()} | 
-            締切: {new Date(job.deadline).toLocaleDateString('ja-JP')}
-          </p>
         </div>
       )}
 
@@ -167,17 +160,6 @@ export default function ApplicationsPage() {
               </div>
 
               <div className={styles.cardBody}>
-                <div className={styles.proposalInfo}>
-                  <div>
-                    <span className={styles.label}>提案予算:</span>
-                    <span className={styles.value}>¥{app.proposed_budget?.toLocaleString()}</span>
-                  </div>
-                  <div>
-                    <span className={styles.label}>見積期間:</span>
-                    <span className={styles.value}>{app.estimated_duration}</span>
-                  </div>
-                </div>
-
                 <div className={styles.message}>
                   <span className={styles.label}>メッセージ:</span>
                   <p>{app.message}</p>
@@ -213,7 +195,14 @@ export default function ApplicationsPage() {
                     この応募は承認されています
                   </div>
                   <button
-                    onClick={() => router.push(`/chat/${app.id}`)}
+                    onClick={() => {
+                      if (app.chat_room_id) {
+                        router.push(`/chat/${app.chat_room_id}`);
+                      } else {
+                        alert('チャットルームが見つかりません。ページを再読み込みしています...');
+                        fetchJobAndApplications();
+                      }
+                    }}
                     className={styles.chatButton}
                   >
                     💬 チャットを開く

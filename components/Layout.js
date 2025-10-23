@@ -9,7 +9,6 @@ export default function Layout({ children }) {
   const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // 未読数を取得する関数
   const fetchUnreadCount = async () => {
     if (status === 'loading') return;
     
@@ -33,12 +32,10 @@ export default function Layout({ children }) {
     }
   };
 
-  // 初回レンダリング時とsession変更時に未読数を取得
   useEffect(() => {
     fetchUnreadCount();
   }, [session, status]);
 
-  // 30秒ごとに未読数を更新
   useEffect(() => {
     if (!session) return;
 
@@ -49,7 +46,6 @@ export default function Layout({ children }) {
     return () => clearInterval(interval);
   }, [session]);
 
-  // ページ遷移時に未読数を再取得
   useEffect(() => {
     const handleRouteChange = () => {
       if (session) {
@@ -76,6 +72,9 @@ export default function Layout({ children }) {
             <>
               <Link href="/">
                 <span className={styles.navLink}>案件一覧</span>
+              </Link>
+              <Link href="/matching">
+                <span className={styles.navLink}>🤝 マッチング</span>
               </Link>
               <Link href="/messages">
                 <span className={styles.navLink}>

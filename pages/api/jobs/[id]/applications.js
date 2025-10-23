@@ -20,9 +20,20 @@ export default async function handler(req, res) {
     }
 
     // 応募データを取得（案件IDで絞り込み）
+    // chat_room_idを明示的に含める
     const { data: applications, error } = await supabase
       .from('applications')
-      .select('*')
+      .select(`
+        id,
+        job_id,
+        freelancer_email,
+        freelancer_name,
+        message,
+        status,
+        chat_room_id,
+        created_at,
+        updated_at
+      `)
       .eq('job_id', parseInt(id))
       .order('created_at', { ascending: false }); // 新しい順に並べる
 
