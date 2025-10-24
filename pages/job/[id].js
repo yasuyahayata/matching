@@ -186,6 +186,7 @@ export default function JobDetail() {
           message: applyForm.message,
           status: 'pending'
         }])
+        .select()
 
       if (error) {
         // 🆕 ユニーク制約エラーの場合
@@ -196,6 +197,29 @@ export default function JobDetail() {
           return
         }
         throw error
+      }
+
+      // 🆕 投稿者に通知を送信
+      try {
+        await fetch('/api/notifications/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            recipientEmail: job.client_email,
+            senderEmail: session.user.email,
+            senderName: session.user.name,
+            type: 'new_application',
+            jobId: job.id.toString(),
+            jobTitle: job.title,
+            applicationId: data[0].id,
+            message: `「${job.title}」に新しい応募がありました。`
+          })
+        })
+      } catch (notifError) {
+        console.error('通知送信エラー:', notifError)
+        // 通知エラーでも応募は成功とする
       }
 
       alert('応募が完了しました！')

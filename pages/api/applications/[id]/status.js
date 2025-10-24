@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../auth/[...nextauth]';
+import { createNotification } from '../../notifications/create';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -36,6 +37,8 @@ export default async function handler(req, res) {
         freelancer_email,
         freelancer_name,
         jobs (
+          id,
+          title,
           client_email,
           client_name
         )
@@ -131,6 +134,22 @@ export default async function handler(req, res) {
       console.error('ステータス更新エラー:', updateError);
       return res.status(500).json({ error: 'ステータスの更新に失敗しました' });
     }
+
+    // 🆕 応募者に通知を送信
+    const notificationMessage = status === 'approved'
+      ? `「${application.jobs.title}」への応募が承認されました！`
+      : `「${application.jobs.title}」への応募が不承認となりました。`;
+
+    await createNotification({
+      recipientEmail: application.freelancer_email,
+      senderEmail: session.user.email,
+      senderName: session.user.name || '投稿者',
+      type: status === 'approved' ? 'application_approved' : 'application_rejected',
+      jobId: application.jobs.id.toString(),
+      jobTitle: application.jobs.title,
+      applicationId: application.id,
+      message: notificationMessage
+    });
 
     return res.status(200).json({ 
       success: true, 
