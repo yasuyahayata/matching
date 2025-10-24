@@ -108,12 +108,12 @@ const skillDetails = {
 export default function Profile() {
   const { data: session } = useSession()
   const router = useRouter()
-  const { email } = router.query // クエリパラメータから email を取得
+  const { email } = router.query
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
-  const [isOwnProfile, setIsOwnProfile] = useState(false) // 自分のプロフィールかどうか
+  const [isOwnProfile, setIsOwnProfile] = useState(false)
   
   const [profile, setProfile] = useState({
     full_name: '',
@@ -130,8 +130,9 @@ export default function Profile() {
   })
 
   const [selectedSkillCategory, setSelectedSkillCategory] = useState(null)
-
   const [postedJobs, setPostedJobs] = useState([])
+  const [myApplications, setMyApplications] = useState([])
+  const [unreadApplicationNotifications, setUnreadApplicationNotifications] = useState(0)
   const [stats, setStats] = useState({
     totalJobs: 0,
     activeJobs: 0,
@@ -140,17 +141,54 @@ export default function Profile() {
 
   useEffect(() => {
     if (session) {
-      // email パラメータがあれば他のユーザーのプロフィール、なければ自分のプロフィール
       const targetEmail = email || session.user.email
       const isOwn = !email || email === session.user.email
       
       setIsOwnProfile(isOwn)
       loadProfile(targetEmail)
       loadPostedJobs(targetEmail)
+      
+      if (isOwn) {
+        loadMyApplications()
+        loadUnreadApplicationNotifications()
+      }
     }
   }, [session, email])
 
-  // チャットルームから名前を取得する関数
+  // 🆕 自分の応募を取得
+  const loadMyApplications = async () => {
+    try {
+      const res = await fetch('/api/applications/my-applications')
+      if (!res.ok) throw new Error('応募の取得に失敗しました')
+      
+      const data = await res.json()
+      // 自分が応募したもののみフィルタ
+      const myApps = data.filter(app => app.freelancer_email === session.user.email)
+      setMyApplications(myApps)
+    } catch (error) {
+      console.error('応募取得エラー:', error)
+    }
+  }
+
+  // 🆕 未読の応募通知を取得
+  const loadUnreadApplicationNotifications = async () => {
+    try {
+      const res = await fetch('/api/notifications')
+      if (!res.ok) throw new Error('通知の取得に失敗しました')
+      
+      const notifications = await res.json()
+      // 応募関連の未読通知をカウント
+      const unreadCount = notifications.filter(notif => 
+        !notif.is_read && 
+        (notif.type === 'application_approved' || notif.type === 'application_rejected')
+      ).length
+      
+      setUnreadApplicationNotifications(unreadCount)
+    } catch (error) {
+      console.error('通知取得エラー:', error)
+    }
+  }
+
   const getUserNameFromChatRooms = async (email) => {
     try {
       const { data, error } = await supabase
@@ -162,7 +200,6 @@ export default function Profile() {
 
       if (error || !data) return null
 
-      // メールアドレスに対応する名前を返す
       if (data.user1_email === email) {
         return data.user1_name
       } else if (data.user2_email === email) {
@@ -205,7 +242,6 @@ export default function Profile() {
           avatar_url: data.avatar_url || ''
         })
       } else {
-        // プロフィールが見つからない場合、チャットルームから名前を取得
         const userName = await getUserNameFromChatRooms(targetEmail)
         
         setProfile({
@@ -263,7 +299,6 @@ export default function Profile() {
     }))
   }
 
-  // タグを追加
   const addTag = (category, tag) => {
     const fieldMap = {
       '対象業種': 'target_industries',
@@ -282,7 +317,6 @@ export default function Profile() {
     }
   }
 
-  // タグを削除
   const removeTag = (category, tag) => {
     const fieldMap = {
       '対象業種': 'target_industries',
@@ -299,7 +333,6 @@ export default function Profile() {
     }))
   }
 
-  // スキル詳細を選択
   const handleSkillDetailClick = (skill) => {
     if (profile.skills.includes(skill)) {
       setProfile(prev => ({
@@ -315,7 +348,6 @@ export default function Profile() {
   }
 
   const handleSave = async () => {
-    // 自分のプロフィールの場合のみ保存可能
     if (!isOwnProfile) {
       alert('他のユーザーのプロフィールは編集できません')
       return
@@ -396,6 +428,17 @@ export default function Profile() {
     return new Date(date).toLocaleDateString('ja-JP')
   }
 
+  // 🆕 ステータスバッジ取得
+  const getStatusBadge = (status) => {
+    const config = {
+      pending: { label: '審査中', className: 'bg-yellow-100 text-yellow-800' },
+      approved: { label: '承認済み', className: 'bg-green-100 text-green-800' },
+      rejected: { label: '却下', className: 'bg-red-100 text-red-800' }
+    }
+    
+    return config[status] || config.pending
+  }
+
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -469,7 +512,27 @@ export default function Profile() {
             >
               📝 投稿した案件
             </button>
-            {/* 自分のプロフィールの場合のみ編集タブを表示 */}
+            {/* 🆕 応募した案件タブ（自分のプロフィールの場合のみ） */}
+            {isOwnProfile && (
+              <button
+                onClick={() => {
+                  setActiveTab('my-applications')
+                  loadUnreadApplicationNotifications()
+                }}
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors relative ${
+                  activeTab === 'my-applications'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                📋 応募した案件
+                {unreadApplicationNotifications > 0 && (
+                  <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadApplicationNotifications}
+                  </span>
+                )}
+              </button>
+            )}
             {isOwnProfile && (
               <button
                 onClick={() => setActiveTab('edit')}
@@ -484,7 +547,6 @@ export default function Profile() {
             )}
           </nav>
         </div>
-
         <div className="p-8">
           {/* 概要タブ */}
           {activeTab === 'overview' && (
@@ -640,6 +702,99 @@ export default function Profile() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 🆕 応募した案件タブ */}
+          {activeTab === 'my-applications' && isOwnProfile && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  応募した案件 ({myApplications.length}件)
+                  {unreadApplicationNotifications > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                      {unreadApplicationNotifications}
+                    </span>
+                  )}
+                </h3>
+              </div>
+
+              {myApplications.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-gray-400 text-6xl mb-4">📋</div>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">まだ応募していません</h3>
+                  <p className="text-gray-500 mb-4">興味のある案件に応募してみましょう</p>
+                  <Link
+                    href="/"
+                    className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-md"
+                  >
+                    案件を探す
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {myApplications.map((app) => {
+                    const statusConfig = getStatusBadge(app.status)
+                    const hasUnreadNotification = app.status !== 'pending' // 承認・却下されたら未読扱い（簡易実装）
+                    
+                    return (
+                      <div 
+                        key={app.id} 
+                        className={`border rounded-xl p-6 hover:shadow-lg transition-shadow ${
+                          hasUnreadNotification ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="text-lg font-semibold text-gray-800">
+                                {app.jobs?.title || '案件'}
+                              </h4>
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusConfig.className}`}>
+                                {statusConfig.label}
+                              </span>
+                              {hasUnreadNotification && app.status !== 'pending' && (
+                                <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+                                  NEW
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-600 text-sm mb-2">
+                              投稿者: {app.jobs?.client_name || app.jobs?.client_email}
+                            </p>
+                            <p className="text-gray-500 text-sm mb-3">
+                              応募日: {new Date(app.created_at).toLocaleDateString('ja-JP')}
+                            </p>
+                            <div className="bg-gray-50 p-3 rounded-lg">
+                              <p className="text-sm text-gray-600 font-medium mb-1">応募メッセージ:</p>
+                              <p className="text-gray-700 text-sm whitespace-pre-wrap line-clamp-3">
+                                {app.message}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <Link
+                            href={`/job/${app.job_id}`}
+                            className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all text-sm"
+                          >
+                            案件詳細を見る
+                          </Link>
+                          {app.status === 'approved' && app.chat_room_id && (
+                            <Link
+                              href={`/chat/${app.chat_room_id}`}
+                              className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all text-sm"
+                            >
+                              💬 チャットを開く
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
