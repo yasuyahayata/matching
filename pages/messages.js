@@ -179,7 +179,7 @@ export default function Messages() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'pending':
-        return { text: '応募中', color: 'yellow' }
+        return { text: 'マッチング前', color: 'yellow' }
       case 'matched':
         return { text: 'マッチング済', color: 'green' }
       case 'rejected':
@@ -263,7 +263,7 @@ export default function Messages() {
           className={`${styles.filterButton} ${filterStatus === 'pending' ? styles.active : ''}`}
           onClick={() => setFilterStatus('pending')}
         >
-          応募中 ({pendingCount})
+          マッチング前({pendingCount})
         </button>
         <button
           className={`${styles.filterButton} ${filterStatus === 'matched' ? styles.active : ''}`}
@@ -308,9 +308,6 @@ export default function Messages() {
                           {statusBadge.text}
                         </span>
                       </div>
-                      <span className={styles.messageTime}>
-                        {formatDate(message.createdAt)}
-                      </span>
                     </div>
                     
                     <p className={styles.messageJobTitle}>
@@ -328,6 +325,10 @@ export default function Messages() {
                         {message.message}
                       </p>
                     )}
+
+                    <span className={styles.messageTime}>
+                      {formatDate(message.createdAt)}
+                    </span>
                   </div>
 
                   {hasUnread && (

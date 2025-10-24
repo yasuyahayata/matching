@@ -187,12 +187,6 @@
   color: #4b5563;
 }
 
-.messageTime {
-  font-size: 0.875rem;
-  color: #9ca3af;
-  white-space: nowrap;
-}
-
 .messageJobTitle {
   font-size: 0.875rem;
   color: #6b7280;
@@ -203,10 +197,16 @@
 .messageText {
   font-size: 0.875rem;
   color: #4b5563;
-  margin: 0;
+  margin: 0 0 0.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.messageTime {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  display: block;
 }
 
 .unreadIndicator {
