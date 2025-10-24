@@ -1,224 +1,230 @@
-import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
+import { useSession } from 'next-auth/react'
+import { supabase } from '../lib/supabase'
 import Link from 'next/link'
 import styles from '../styles/Messages.module.css'
 
-export default function Messages() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  
-  const [chatRooms, setChatRooms] = useState([])
-  const [applications, setApplications] = useState([])
+export default function MessagesPage() {
+  const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const router = useRouter()
+  const { data: session, status } = useSession()
 
   useEffect(() => {
     if (status === 'loading') return
-
-    if (status === 'unauthenticated') {
-      router.push('/api/auth/signin')
+    
+    if (!session) {
+      router.push('/')
       return
     }
-
-    fetchData()
     
-    // 5秒ごとに更新
-    const interval = setInterval(() => {
-      fetchData()
-    }, 5000)
-    
-    return () => clearInterval(interval)
-  }, [status])
+    fetchConversations()
+  }, [session, status])
 
-  const fetchData = async () => {
+  const getStatusLabel = (statusValue) => {
+    switch (statusValue) {
+      case 'approved':
+        return 'マッチング'
+      case 'pending':
+        return '審査中'
+      case 'inquiry':
+        return 'お問い合わせ'
+      default:
+        return '審査中'
+    }
+  }
+
+  const getStatusStyle = (statusValue) => {
+    switch (statusValue) {
+      case 'approved':
+        return styles.statusMatching
+      case 'pending':
+        return styles.statusPending
+      case 'inquiry':
+        return styles.statusInquiry
+      default:
+        return styles.statusPending
+    }
+  }
+
+  const fetchConversations = async () => {
+    if (!session?.user?.email) return
+
     try {
-      if (loading && chatRooms.length > 0) {
+      const userEmail = session.user.email
+      console.log('User email:', userEmail)
+
+      // Fetch chat rooms where user is participant
+      const { data: chatRooms, error: roomsError } = await supabase
+        .from('chat_rooms')
+        .select('*')
+        .or(`user1_email.eq.${userEmail},user2_email.eq.${userEmail}`)
+        .order('updated_at', { ascending: false })
+
+      console.log('Chat rooms:', chatRooms)
+      if (roomsError) {
+        console.error('Rooms error:', roomsError)
         setLoading(false)
-      } else {
-        setLoading(true)
+        return
       }
 
-      // チャットルームと応募情報を並行取得
-      const [chatRoomsRes, applicationsRes] = await Promise.all([
-        fetch('/api/chat-rooms'),
-        fetch('/api/applications/my-applications')
-      ])
+      if (!chatRooms || chatRooms.length === 0) {
+        setLoading(false)
+        return
+      }
+
+      // Get the latest message for each chat room and filter rooms with messages
+      const conversationsData = []
       
-      if (!chatRoomsRes.ok) {
-        throw new Error('チャットルームの取得に失敗しました')
+      for (const room of chatRooms) {
+        const { data: messages } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('chat_room_id', room.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+
+        // Skip if no messages in this room
+        if (!messages || messages.length === 0) {
+          continue
+        }
+
+        const latestMessage = messages[0]
+
+        // Determine partner email and name
+        const partnerEmail = room.user1_email === userEmail 
+          ? room.user2_email 
+          : room.user1_email
+        const partnerName = room.user1_email === userEmail 
+          ? room.user2_name 
+          : room.user1_name
+
+        // Count unread messages
+        const { count: unreadCount } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('chat_room_id', room.id)
+          .eq('sender_email', partnerEmail)
+          .eq('is_read', false)
+
+        // Determine status
+        let statusValue = 'inquiry' // デフォルトは「お問い合わせ」
+        
+        // Get job title if job_id exists
+        let jobTitle = null
+        if (room.job_id) {
+          const { data: job } = await supabase
+            .from('jobs')
+            .select('title')
+            .eq('id', room.job_id)
+            .single()
+
+          if (job) {
+            jobTitle = job.title
+          }
+
+          // job_idがある場合、applicationsテーブルを確認
+          const { data: applications } = await supabase
+            .from('applications')
+            .select('status, freelancer_email')
+            .eq('job_id', room.job_id)
+
+          console.log('Applications for job', room.job_id, ':', applications)
+
+          if (applications && applications.length > 0) {
+            // user1_emailまたはuser2_emailがfreelancer_emailと一致するものを探す
+            const matchingApp = applications.find(app => 
+              app.freelancer_email === room.user1_email || 
+              app.freelancer_email === room.user2_email
+            )
+
+            if (matchingApp) {
+              statusValue = matchingApp.status
+              console.log('Matched application status:', matchingApp.status)
+            }
+          }
+        }
+
+        conversationsData.push({
+          roomId: room.id,
+          userId: partnerEmail,
+          companyName: partnerName || partnerEmail,
+          jobTitle: jobTitle,
+          lastMessage: latestMessage.message,
+          lastMessageTime: latestMessage.created_at,
+          unreadCount: unreadCount || 0,
+          status: statusValue
+        })
       }
 
-      const chatRoomsData = await chatRoomsRes.json()
-      setChatRooms(chatRoomsData)
-
-      // 応募情報を取得（エラーでも続行）
-      if (applicationsRes.ok) {
-        const applicationsData = await applicationsRes.json()
-        setApplications(applicationsData)
-      } else {
-        setApplications([])
-      }
-    } catch (err) {
-      console.error('データ取得エラー:', err)
-      setError(err.message)
+      console.log('Conversations with messages:', conversationsData)
+      setConversations(conversationsData)
+    } catch (error) {
+      console.error('Error fetching conversations:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleChatRoomClick = (roomId) => {
-    router.push(`/chat/${roomId}`)
-  }
-
-  const getStatusInfo = (room) => {
-    // job_id がある場合、そのjob_idの応募ステータスを確認
-    if (room.job_id) {
-      // このチャットルームに紐づく応募を探す
-      const relatedApplication = applications.find(app => 
-        app.job_id?.toString() === room.job_id?.toString() &&
-        app.status === 'pending'
-      )
-
-      if (relatedApplication) {
-        // 応募が審査中なら「審査中」
-        return {
-          text: '審査中',
-          color: 'yellow'
-        }
-      } else {
-        // 承認済みなら「マッチング」
-        return {
-          text: 'マッチング',
-          color: 'green'
-        }
-      }
-    }
-    
-    // job_id がない場合は「お問い合わせ」
-    return {
-      text: 'お問い合わせ',
-      color: 'blue'
-    }
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return ''
-    
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInSeconds = Math.floor((now - date) / 1000)
-
-    if (diffInSeconds < 60) {
-      return 'たった今'
-    } else if (diffInSeconds < 3600) {
-      return `${Math.floor(diffInSeconds / 60)}分前`
-    } else if (diffInSeconds < 86400) {
-      return `${Math.floor(diffInSeconds / 3600)}時間前`
-    } else if (diffInSeconds < 604800) {
-      return `${Math.floor(diffInSeconds / 86400)}日前`
-    } else {
-      return date.toLocaleDateString('ja-JP', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    }
-  }
-
-  if (loading && chatRooms.length === 0) {
+  if (status === 'loading' || loading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loading}>
-          <div className={styles.spinner}></div>
-          <p>読み込み中...</p>
-        </div>
+      <div className={styles.loadingContainer}>
+        <div className={styles.loading}>読み込み中...</div>
       </div>
     )
   }
 
-  if (error) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.error}>
-          <p>エラー: {error}</p>
-          <button onClick={() => window.location.reload()}>再読み込み</button>
-        </div>
-      </div>
-    )
+  if (!session) {
+    return null
   }
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1>💬 メッセージ</h1>
-      </div>
-
       <div className={styles.content}>
-        {chatRooms.length === 0 ? (
-          <div className={styles.empty}>
-            <div className={styles.emptyIcon}>💬</div>
-            <h3>チャットルームがありません</h3>
-            <p>案件に応募して承認されると、チャットルームが作成されます。</p>
-            <Link href="/" className={styles.emptyButton}>
-              案件を探す
-            </Link>
+        <h1 className={styles.title}>メッセージ</h1>
+
+        {conversations.length === 0 ? (
+          <div className={styles.emptyState}>
+            <p>メッセージはありません</p>
           </div>
         ) : (
-          <div className={styles.messagesList}>
-            {chatRooms.map((room) => {
-              const otherUser = 
-                room.user1_email === session?.user?.email
-                  ? { email: room.user2_email, name: room.user2_name }
-                  : { email: room.user1_email, name: room.user1_name }
-
-              const hasUnread = room.unread_count > 0
-              const statusInfo = getStatusInfo(room)
-
-              return (
-                <div
-                  key={room.id}
-                  className={`${styles.messageCard} ${hasUnread ? styles.unread : ''}`}
-                  onClick={() => handleChatRoomClick(room.id)}
-                >
-                  <div className={styles.messageAvatar}>
-                    {otherUser.name.charAt(0).toUpperCase()}
-                  </div>
-                  
-                  <div className={styles.messageContent}>
-                    <div className={styles.messageHeader}>
-                      <div className={styles.messageHeaderLeft}>
-                        <h3 className={styles.messageUserName}>{otherUser.name}</h3>
-                        <span className={`${styles.statusBadge} ${styles[`status${statusInfo.color}`]}`}>
-                          {statusInfo.text}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <p className={styles.messageJobTitle}>
-                      📋 {room.jobs?.title || 'お問い合わせ'}
-                    </p>
-                    
-                    {room.last_message && (
-                      <p className={styles.messageText}>
-                        {room.last_message}
-                      </p>
-                    )}
-
-                    <span className={styles.messageTime}>
-                      {formatDate(room.last_message_at || room.created_at)}
+          <div className={styles.conversationList}>
+            {conversations.map((conv) => (
+              <Link
+                key={conv.roomId}
+                href={`/chat/${conv.roomId}`}
+                className={styles.conversationItem}
+              >
+                <div className={styles.conversationContent}>
+                  <div className={styles.conversationHeader}>
+                    <h3 className={styles.companyName}>{conv.companyName}</h3>
+                    <span className={`${styles.statusBadge} ${getStatusStyle(conv.status)}`}>
+                      {getStatusLabel(conv.status)}
                     </span>
+                    {conv.unreadCount > 0 && (
+                      <span className={styles.unreadBadge}>
+                        {conv.unreadCount}
+                      </span>
+                    )}
                   </div>
-
-                  {hasUnread && (
-                    <div className={styles.unreadIndicator}>
-                      {room.unread_count}
-                    </div>
+                  {conv.jobTitle && (
+                    <p className={styles.jobTitle}>{conv.jobTitle}</p>
                   )}
                 </div>
-              )
-            })}
+                <div className={styles.conversationMeta}>
+                  <p className={styles.lastMessage}>{conv.lastMessage}</p>
+                  <span className={styles.timestamp}>
+                    {new Date(conv.lastMessageTime).toLocaleDateString('ja-JP', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
       </div>

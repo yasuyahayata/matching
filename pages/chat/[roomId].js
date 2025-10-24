@@ -127,9 +127,19 @@ export default function ChatRoom() {
   // メッセージを既読にする
   const markAsRead = async () => {
     try {
-      await fetch(`/api/chat-rooms/${roomId}/mark-as-read`, {
+      const response = await fetch(`/api/chat-rooms/${roomId}/mark-as-read`, {
         method: 'POST',
       })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('既読にしました:', data.markedCount, '件')
+        
+        // 既読にしたことをブラウザのイベントで通知
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('messagesRead'))
+        }
+      }
     } catch (err) {
       console.error('既読エラー:', err)
     }
@@ -197,7 +207,7 @@ export default function ChatRoom() {
 
   if (loading) {
     return (
-      <div className={styles.container}>
+      <div className={styles.container} style={{ maxWidth: '56rem', width: '100%' }}>
         <p>読み込み中...</p>
       </div>
     )
@@ -205,7 +215,7 @@ export default function ChatRoom() {
 
   if (error) {
     return (
-      <div className={styles.container}>
+      <div className={styles.container} style={{ maxWidth: '56rem', width: '100%' }}>
         <div className={styles.error}>
           <p>エラー: {error}</p>
           <button onClick={() => router.back()}>戻る</button>
@@ -216,7 +226,7 @@ export default function ChatRoom() {
 
   if (!chatRoom) {
     return (
-      <div className={styles.container}>
+      <div className={styles.container} style={{ maxWidth: '56rem', width: '100%' }}>
         <p>チャットルームが見つかりません</p>
       </div>
     )
@@ -229,7 +239,7 @@ export default function ChatRoom() {
       : { email: chatRoom.user1_email, name: chatRoom.user1_name }
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} style={{ maxWidth: '56rem', width: '100%' }}>
       {/* 改善されたヘッダー */}
       <div className={styles.chatHeader}>
         <button onClick={() => router.back()} className={styles.backButton}>

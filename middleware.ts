@@ -39,16 +39,17 @@ export async function middleware(request: NextRequest) {
   
   // 認証が必要なページで未認証の場合
   if (!token) {
-    const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('callbackUrl', pathname)
-    return NextResponse.redirect(loginUrl)
+    // NextAuthのサインインページにリダイレクト
+    const signinUrl = new URL('/api/auth/signin', request.url)
+    signinUrl.searchParams.set('callbackUrl', pathname)
+    return NextResponse.redirect(signinUrl)
   }
   
   // 管理者専用ページのアクセス制御
   if (pathname.startsWith('/admin')) {
     const userType = token.userType as string
     if (userType !== 'admin') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      return NextResponse.redirect(new URL('/', request.url))
     }
   }
   
@@ -56,13 +57,13 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/projects/manage')) {
     const userType = token.userType as string
     if (userType !== 'client' && userType !== 'admin') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      return NextResponse.redirect(new URL('/', request.url))
     }
   }
   
   // 認証済みユーザーがログインページにアクセスした場合
   if (pathname === '/login' && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return NextResponse.redirect(new URL('/', request.url))
   }
   
   return NextResponse.next()

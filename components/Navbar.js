@@ -1,32 +1,41 @@
-import { useSession } from 'next-auth/react'
-import { useState, useEffect } from 'react'
-import Link from 'link'
+import Link from 'next/link'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/router'
-import styles from '../styles/Navbar.module.css'
+import { useEffect, useState } from 'react'
+import styles from './Navbar.module.css'
 
 export default function Navbar() {
   const { data: session } = useSession()
   const router = useRouter()
   const [unreadCount, setUnreadCount] = useState(0)
+  const [unreadMessages, setUnreadMessages] = useState(0)
 
   useEffect(() => {
-    if (session) {
-      fetchUnreadCount()
-      // 30秒ごとに未読数を更新
-      const interval = setInterval(fetchUnreadCount, 30000)
+    if (session?.user) {
+      fetchUnreadCounts()
+      const interval = setInterval(fetchUnreadCounts, 30000)
       return () => clearInterval(interval)
     }
   }, [session])
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCounts = async () => {
     try {
-      const res = await fetch('/api/notifications/unread-count')
-      if (res.ok) {
-        const data = await res.json()
+      const [notificationsRes, messagesRes] = await Promise.all([
+        fetch('/api/notifications/unread-count'),
+        fetch('/api/chat-rooms/unread-count')
+      ])
+      
+      if (notificationsRes.ok) {
+        const data = await notificationsRes.json()
         setUnreadCount(data.count)
       }
+      
+      if (messagesRes.ok) {
+        const data = await messagesRes.json()
+        setUnreadMessages(data.count)
+      }
     } catch (error) {
-      console.error('未読数取得エラー:', error)
+      console.error('Error fetching unread counts:', error)
     }
   }
 
@@ -37,56 +46,34 @@ export default function Navbar() {
           CROWD-MVP
         </Link>
 
-        <div className={styles.navLinks}>
-          <Link 
-            href="/" 
-            className={`${styles.navLink} ${router.pathname === '/' ? styles.active : ''}`}
-          >
-            🏠 ホーム
-          </Link>
-
-          {session && (
+        <div className={styles.nav}>
+          {session ? (
             <>
-              <Link 
-                href="/messages" 
-                className={`${styles.navLink} ${router.pathname === '/messages' ? styles.active : ''}`}
-              >
+              <Link href="/messages" className={styles.navLink}>
                 💬 メッセージ
-                {unreadCount > 0 && (
-                  <span className={styles.badge}>{unreadCount}</span>
+                {unreadMessages > 0 && (
+                  <span className={styles.badge}>{unreadMessages}</span>
                 )}
               </Link>
-
-              <Link 
-                href="/my-applications" 
-                className={`${styles.navLink} ${router.pathname === '/my-applications' ? styles.active : ''}`}
-              >
-                📋 応募管理
+              <Link href="/my-applications" className={styles.navLink}>
+                📋 マイ応募
               </Link>
-
-              <Link 
-                href="/profile" 
-                className={`${styles.navLink} ${router.pathname === '/profile' ? styles.active : ''}`}
-              >
+              <Link href="/profile" className={styles.navLink}>
                 👤 プロフィール
               </Link>
-
-              <Link 
-                href="/post-job" 
-                className={styles.postButton}
-              >
-                ➕ 案件投稿
+              <button onClick={() => signOut()} className={styles.navButton}>
+                ログアウト
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/auth/signin" className={styles.navLink}>
+                ログイン
+              </Link>
+              <Link href="/auth/signup" className={styles.navLink}>
+                新規登録
               </Link>
             </>
-          )}
-
-          {!session && (
-            <Link 
-              href="/api/auth/signin" 
-              className={styles.loginButton}
-            >
-              ログイン
-            </Link>
           )}
         </div>
       </div>

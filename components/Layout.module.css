@@ -20,6 +20,7 @@
   cursor: pointer;
   transition: transform 0.2s;
   letter-spacing: 0.5px;
+  text-decoration: none; /* 追加 */
 }
 
 .logo:hover {
@@ -44,6 +45,8 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.95rem;
+  text-decoration: none; /* 追加 */
+  pointer-events: auto; /* 追加 */
 }
 
 .navLink:hover {
@@ -56,6 +59,8 @@
   font-weight: 600;
   padding: 0.5rem 1rem;
   font-size: 0.95rem;
+  cursor: pointer; /* 追加 */
+  text-decoration: none; /* 追加 */
 }
 
 .loadingText {
@@ -116,6 +121,7 @@
   margin-left: 8px;
   animation: pulse 2s infinite;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  pointer-events: none; /* 追加：バッジはクリック不可 */
 }
 
 @keyframes pulse {

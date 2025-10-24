@@ -23,6 +23,7 @@ export default function Layout({ children }) {
       if (res.ok) {
         const data = await res.json();
         const count = Number(data.totalUnread) || 0;
+        console.log('未読チャット数:', count);
         setUnreadChatCount(count);
       } else {
         setUnreadChatCount(0);
@@ -46,6 +47,7 @@ export default function Layout({ children }) {
       if (res.ok) {
         const data = await res.json();
         const count = Number(data.count) || 0;
+        console.log('未読通知数:', count);
         setUnreadNotificationCount(count);
       } else {
         setUnreadNotificationCount(0);
@@ -101,9 +103,20 @@ export default function Layout({ children }) {
       }
     };
 
+    // 既読イベントを受け取る
+    const handleMessagesRead = () => {
+      if (session) {
+        console.log('既読イベントを受信、未読数を更新します');
+        fetchAllUnreadCounts();
+      }
+    };
+
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('messagesRead', handleMessagesRead);
+    
     return () => {
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('messagesRead', handleMessagesRead);
     };
   }, [session]);
 
@@ -113,30 +126,28 @@ export default function Layout({ children }) {
   return (
     <div className={styles.container}>
       <nav className={styles.nav}>
-        <Link href="/">
-          <span className={styles.logo}>CrowdWork MVP</span>
+        <Link href="/" className={styles.logo}>
+          CrowdWork MVP
         </Link>
         <div className={styles.navLinks}>
           {status === 'loading' ? (
             <span className={styles.loadingText}>読み込み中...</span>
           ) : session ? (
             <>
-              <Link href="/">
-                <span className={styles.navLink}>案件一覧</span>
+              <Link href="/" className={styles.navLink}>
+                案件一覧
               </Link>
-              <Link href="/messages">
-                <span className={styles.navLink}>
-                  💬 メッセージ
-                  {totalUnreadCount > 0 && (
-                    <span className={styles.unreadBadge}>{totalUnreadCount}</span>
-                  )}
-                </span>
+              <Link href="/messages" className={styles.navLink}>
+                💬 メッセージ
+                {totalUnreadCount > 0 && (
+                  <span className={styles.unreadBadge}>{totalUnreadCount}</span>
+                )}
               </Link>
-              <Link href="/profile">
-                <span className={styles.navLink}>プロフィール</span>
+              <Link href="/profile" className={styles.navLink}>
+                プロフィール
               </Link>
-              <Link href={`/profile?user=${session.user.name}`}>
-                <span className={styles.userName}>{session.user.name}</span>
+              <Link href={`/profile?user=${session.user.name}`} className={styles.userName}>
+                {session.user.name}
               </Link>
               <Link href="/api/auth/signout">
                 <button className={styles.logoutButton}>ログアウト</button>
@@ -144,11 +155,11 @@ export default function Layout({ children }) {
             </>
           ) : (
             <>
-              <Link href="/">
-                <span className={styles.navLink}>案件一覧</span>
+              <Link href="/" className={styles.navLink}>
+                案件一覧
               </Link>
-              <Link href="/post-job">
-                <span className={styles.navLink}>案件投稿</span>
+              <Link href="/post-job" className={styles.navLink}>
+                案件投稿
               </Link>
               <Link href="/api/auth/signin">
                 <button className={styles.loginButton}>ログイン</button>
