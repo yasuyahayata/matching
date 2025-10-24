@@ -8,13 +8,10 @@ export default function Messages() {
   const { data: session, status } = useSession()
   const router = useRouter()
   
-  const [activeTab, setActiveTab] = useState('chat-rooms')
-  const [matchingSubTab, setMatchingSubTab] = useState('client')
-  const [chatRooms, setChatRooms] = useState([])
-  const [notifications, setNotifications] = useState([])
+  const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [processingApplications, setProcessingApplications] = useState(new Set())
+  const [filterStatus, setFilterStatus] = useState('all') // 'all', 'pending', 'matched'
 
   useEffect(() => {
     if (status === 'loading') return
@@ -24,168 +21,133 @@ export default function Messages() {
       return
     }
 
-    fetchChatRooms()
-    fetchNotifications()
+    fetchMessages()
   }, [status])
 
-  const fetchChatRooms = async () => {
+  const fetchMessages = async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/chat-rooms')
-      
-      if (!res.ok) {
-        throw new Error('チャットルームの取得に失敗しました')
+
+      // チャットルームと通知を並行取得
+      const [chatRoomsRes, notificationsRes] = await Promise.all([
+        fetch('/api/chat-rooms'),
+        fetch('/api/notifications')
+      ])
+
+      if (!chatRoomsRes.ok || !notificationsRes.ok) {
+        throw new Error('データの取得に失敗しました')
       }
 
-      const data = await res.json()
-      setChatRooms(data)
+      const chatRooms = await chatRoomsRes.json()
+      const notifications = await notificationsRes.json()
+
+      // メッセージリストを作成
+      const messageList = []
+
+      // チャットルーム（マッチング済み）を追加
+      chatRooms.forEach(room => {
+        const otherUser = 
+          room.user1_email === session?.user?.email
+            ? { email: room.user2_email, name: room.user2_name }
+            : { email: room.user1_email, name: room.user1_name }
+
+        messageList.push({
+          id: `chat-${room.id}`,
+          type: 'chat',
+          status: 'matched',
+          roomId: room.id,
+          jobId: room.jobs?.id,
+          jobTitle: room.jobs?.title || '案件情報なし',
+          userName: otherUser.name,
+          userEmail: otherUser.email,
+          lastMessage: room.last_message,
+          lastMessageAt: room.last_message_at,
+          unreadCount: room.unread_count || 0,
+          createdAt: room.last_message_at || room.created_at
+        })
+      })
+
+      // 通知（マッチング前）を追加
+      notifications.forEach(notification => {
+        // 応募通知（発注側）
+        if (notification.type === 'application') {
+          messageList.push({
+            id: `notification-${notification.id}`,
+            type: 'notification',
+            status: 'pending',
+            notificationId: notification.id,
+            notificationType: 'application',
+            jobId: notification.job_id,
+            jobTitle: notification.job_title,
+            userName: notification.sender_name,
+            userEmail: notification.sender_email,
+            message: `${notification.sender_name}さんから応募がありました`,
+            isRead: notification.is_read,
+            createdAt: notification.created_at,
+            applicationId: notification.application_id
+          })
+        }
+        // 承認・拒否通知（受注側）
+        else if (notification.type === 'approved' || notification.type === 'rejected') {
+          messageList.push({
+            id: `notification-${notification.id}`,
+            type: 'notification',
+            status: notification.type === 'approved' ? 'matched' : 'rejected',
+            notificationId: notification.id,
+            notificationType: notification.type,
+            jobId: notification.job_id,
+            jobTitle: notification.job_title,
+            userName: notification.sender_name,
+            userEmail: notification.sender_email,
+            message: notification.type === 'approved' 
+              ? '応募が承認されました' 
+              : '応募は見送りとなりました',
+            isRead: notification.is_read,
+            createdAt: notification.created_at
+          })
+        }
+      })
+
+      // 日時順にソート（新しい順）
+      messageList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+
+      setMessages(messageList)
     } catch (err) {
-      console.error('チャットルーム取得エラー:', err)
+      console.error('データ取得エラー:', err)
       setError(err.message)
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch('/api/notifications')
-      
-      if (!res.ok) {
-        throw new Error('通知の取得に失敗しました')
+  const handleMessageClick = async (message) => {
+    // チャットルームの場合
+    if (message.type === 'chat') {
+      router.push(`/chat/${message.roomId}`)
+      return
+    }
+
+    // 通知の場合
+    if (message.type === 'notification') {
+      // 既読にする
+      if (!message.isRead) {
+        await markNotificationAsRead(message.notificationId)
       }
 
-      const data = await res.json()
-      setNotifications(data)
-    } catch (err) {
-      console.error('通知取得エラー:', err)
-    }
-  }
-
-  const handleApprove = async (notification, e) => {
-    e.stopPropagation()
-    
-    if (!notification.application_id) {
-      alert('応募情報が見つかりません')
-      return
-    }
-
-    if (processingApplications.has(notification.application_id)) {
-      return
-    }
-
-    if (!confirm(`${notification.sender_name}さんの応募を承認しますか？`)) {
-      return
-    }
-
-    setProcessingApplications(prev => new Set(prev).add(notification.application_id))
-
-    try {
-      const res = await fetch(`/api/applications/${notification.application_id}/approve`, {
-        method: 'POST',
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || '承認に失敗しました')
+      // 承認通知の場合はチャットルームに遷移
+      if (message.notificationType === 'approved') {
+        const chatMessage = messages.find(m => 
+          m.type === 'chat' && 
+          m.jobId?.toString() === message.jobId?.toString()
+        )
+        if (chatMessage) {
+          router.push(`/chat/${chatMessage.roomId}`)
+          return
+        }
       }
 
-      const data = await res.json()
-
-      alert('応募を承認しました！チャットルームが作成されました。')
-      
-      // 通知を既読にして削除
-      await markNotificationAsRead(notification.id)
-      setNotifications(prev => prev.filter(n => n.id !== notification.id))
-      
-      // チャットルーム一覧を更新
-      await fetchChatRooms()
-
-      // チャットルームに遷移
-      if (data.chatRoomId) {
-        router.push(`/chat/${data.chatRoomId}`)
-      }
-    } catch (err) {
-      console.error('承認エラー:', err)
-      alert(err.message)
-    } finally {
-      setProcessingApplications(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(notification.application_id)
-        return newSet
-      })
-    }
-  }
-
-  const handleReject = async (notification, e) => {
-    e.stopPropagation()
-    
-    if (!notification.application_id) {
-      alert('応募情報が見つかりません')
-      return
-    }
-
-    if (processingApplications.has(notification.application_id)) {
-      return
-    }
-
-    if (!confirm(`${notification.sender_name}さんの応募を拒否しますか？`)) {
-      return
-    }
-
-    setProcessingApplications(prev => new Set(prev).add(notification.application_id))
-
-    try {
-      const res = await fetch(`/api/applications/${notification.application_id}/reject`, {
-        method: 'POST',
-      })
-
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || '拒否に失敗しました')
-      }
-
-      alert('応募を拒否しました。')
-      
-      // 通知を既読にして削除
-      await markNotificationAsRead(notification.id)
-      setNotifications(prev => prev.filter(n => n.id !== notification.id))
-    } catch (err) {
-      console.error('拒否エラー:', err)
-      alert(err.message)
-    } finally {
-      setProcessingApplications(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(notification.application_id)
-        return newSet
-      })
-    }
-  }
-
-  const handleNotificationClick = async (notification) => {
-    // 発注側の応募通知の場合はクリック無効（承認・拒否ボタンのみ）
-    if (notification.type === 'application') {
-      return
-    }
-
-    // 既読にする
-    if (!notification.is_read) {
-      await markNotificationAsRead(notification.id)
-    }
-
-    // 承認通知の場合はチャットルームに遷移
-    if (notification.type === 'approved') {
-      const chatRoom = chatRooms.find(room => 
-        room.jobs?.id?.toString() === notification.job_id?.toString()
-      )
-
-      if (chatRoom) {
-        router.push(`/chat/${chatRoom.id}`)
-      } else {
-        router.push(`/job/${notification.job_id}`)
-      }
-    } else {
-      router.push(`/job/${notification.job_id}`)
+      // それ以外は案件詳細へ
+      router.push(`/job/${message.jobId}`)
     }
   }
 
@@ -201,11 +163,12 @@ export default function Messages() {
         })
       })
 
-      setNotifications(prev =>
-        prev.map(notif =>
-          notif.id === notificationId
-            ? { ...notif, is_read: true }
-            : notif
+      // ローカル状態を更新
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.notificationId === notificationId
+            ? { ...msg, isRead: true }
+            : msg
         )
       )
     } catch (err) {
@@ -213,84 +176,22 @@ export default function Messages() {
     }
   }
 
-  const markAllNotificationsAsRead = async (type) => {
-    try {
-      let unreadIds
-      
-      if (type === 'client') {
-        unreadIds = notifications
-          .filter(notif => !notif.is_read && notif.type === 'application')
-          .map(notif => notif.id)
-      } else {
-        unreadIds = notifications
-          .filter(notif => !notif.is_read && (notif.type === 'approved' || notif.type === 'rejected'))
-          .map(notif => notif.id)
-      }
-
-      if (unreadIds.length === 0) return
-
-      await fetch('/api/notifications/mark-as-read', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          notificationIds: unreadIds
-        })
-      })
-
-      setNotifications(prev =>
-        prev.map(notif => 
-          unreadIds.includes(notif.id)
-            ? { ...notif, is_read: true }
-            : notif
-        )
-      )
-    } catch (err) {
-      console.error('一括既読更新エラー:', err)
-    }
-  }
-
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'application':
-        return '📩'
-      case 'approved':
-        return '✅'
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'pending':
+        return { text: '応募中', color: 'yellow' }
+      case 'matched':
+        return { text: 'マッチング済', color: 'green' }
       case 'rejected':
-        return '❌'
+        return { text: '見送り', color: 'gray' }
       default:
-        return '🔔'
-    }
-  }
-
-  const getNotificationTitle = (type) => {
-    switch (type) {
-      case 'application':
-        return '新しい応募があります'
-      case 'approved':
-        return 'おめでとうございます！'
-      case 'rejected':
-        return '応募結果のお知らせ'
-      default:
-        return '通知'
-    }
-  }
-
-  const getNotificationDescription = (notification) => {
-    switch (notification.type) {
-      case 'application':
-        return `${notification.sender_name}さんから「${notification.job_title}」に応募がありました。`
-      case 'approved':
-        return `「${notification.job_title}」への応募が承認されました。`
-      case 'rejected':
-        return `「${notification.job_title}」への応募は見送りとなりました。`
-      default:
-        return notification.message
+        return { text: '', color: 'gray' }
     }
   }
 
   const formatDate = (dateString) => {
+    if (!dateString) return ''
+    
     const date = new Date(dateString)
     const now = new Date()
     const diffInSeconds = Math.floor((now - date) / 1000)
@@ -335,13 +236,14 @@ export default function Messages() {
     )
   }
 
-  const clientNotifications = notifications.filter(n => n.type === 'application')
-  const unreadClientCount = clientNotifications.filter(n => !n.is_read).length
+  // フィルター処理
+  const filteredMessages = messages.filter(message => {
+    if (filterStatus === 'all') return true
+    return message.status === filterStatus
+  })
 
-  const applicantNotifications = notifications.filter(n => n.type === 'approved' || n.type === 'rejected')
-  const unreadApplicantCount = applicantNotifications.filter(n => !n.is_read).length
-
-  const totalUnreadNotifications = unreadClientCount + unreadApplicantCount
+  const pendingCount = messages.filter(m => m.status === 'pending').length
+  const matchedCount = messages.filter(m => m.status === 'matched').length
 
   return (
     <div className={styles.container}>
@@ -349,245 +251,96 @@ export default function Messages() {
         <h1>💬 メッセージ</h1>
       </div>
 
-      <div className={styles.tabs}>
+      {/* フィルターボタン */}
+      <div className={styles.filterButtons}>
         <button
-          className={`${styles.tab} ${activeTab === 'chat-rooms' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('chat-rooms')}
+          className={`${styles.filterButton} ${filterStatus === 'all' ? styles.active : ''}`}
+          onClick={() => setFilterStatus('all')}
         >
-          チャット
-          {chatRooms.filter(room => room.unread_count > 0).length > 0 && (
-            <span className={styles.badge}>
-              {chatRooms.filter(room => room.unread_count > 0).length}
-            </span>
-          )}
+          すべて ({messages.length})
         </button>
         <button
-          className={`${styles.tab} ${activeTab === 'notifications' ? styles.activeTab : ''}`}
-          onClick={() => setActiveTab('notifications')}
+          className={`${styles.filterButton} ${filterStatus === 'pending' ? styles.active : ''}`}
+          onClick={() => setFilterStatus('pending')}
         >
-          マッチング
-          {totalUnreadNotifications > 0 && (
-            <span className={styles.badge}>
-              {totalUnreadNotifications}
-            </span>
-          )}
+          応募中 ({pendingCount})
+        </button>
+        <button
+          className={`${styles.filterButton} ${filterStatus === 'matched' ? styles.active : ''}`}
+          onClick={() => setFilterStatus('matched')}
+        >
+          マッチング済 ({matchedCount})
         </button>
       </div>
 
-      {activeTab === 'chat-rooms' && (
-        <div className={styles.content}>
-          {chatRooms.length === 0 ? (
-            <div className={styles.empty}>
-              <div className={styles.emptyIcon}>💬</div>
-              <h3>チャットルームがありません</h3>
-              <p>案件に応募して承認されると、チャットルームが作成されます。</p>
-              <Link href="/" className={styles.emptyButton}>
-                案件を探す
-              </Link>
-            </div>
-          ) : (
-            <div className={styles.chatRoomsList}>
-              {chatRooms.map((room) => {
-                const otherUser = 
-                  room.user1_email === session?.user?.email
-                    ? { email: room.user2_email, name: room.user2_name }
-                    : { email: room.user1_email, name: room.user1_name }
-
-                return (
-                  <Link
-                    key={room.id}
-                    href={`/chat/${room.id}`}
-                    className={styles.chatRoomCard}
-                  >
-                    <div className={styles.chatRoomAvatar}>
-                      {otherUser.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className={styles.chatRoomInfo}>
-                      <div className={styles.chatRoomHeader}>
-                        <h3 className={styles.chatRoomName}>{otherUser.name}</h3>
-                        {room.last_message_at && (
-                          <span className={styles.chatRoomTime}>
-                            {formatDate(room.last_message_at)}
-                          </span>
-                        )}
-                      </div>
-                      <p className={styles.chatRoomJob}>
-                        📋 {room.jobs?.title || '案件情報なし'}
-                      </p>
-                      {room.last_message && (
-                        <p className={styles.chatRoomLastMessage}>
-                          {room.last_message}
-                        </p>
-                      )}
-                    </div>
-                    {room.unread_count > 0 && (
-                      <div className={styles.unreadBadge}>
-                        {room.unread_count}
-                      </div>
-                    )}
-                  </Link>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'notifications' && (
-        <div className={styles.content}>
-          <div className={styles.subTabs}>
-            <button
-              className={`${styles.subTab} ${matchingSubTab === 'client' ? styles.activeSubTab : ''}`}
-              onClick={() => setMatchingSubTab('client')}
-            >
-              発注側
-              {unreadClientCount > 0 && (
-                <span className={styles.subBadge}>{unreadClientCount}</span>
-              )}
-            </button>
-            <button
-              className={`${styles.subTab} ${matchingSubTab === 'applicant' ? styles.activeSubTab : ''}`}
-              onClick={() => setMatchingSubTab('applicant')}
-            >
-              受注側
-              {unreadApplicantCount > 0 && (
-                <span className={styles.subBadge}>{unreadApplicantCount}</span>
-              )}
-            </button>
+      {/* メッセージ一覧 */}
+      <div className={styles.content}>
+        {filteredMessages.length === 0 ? (
+          <div className={styles.empty}>
+            <div className={styles.emptyIcon}>💬</div>
+            <h3>メッセージがありません</h3>
+            <p>案件に応募すると、ここにメッセージが表示されます。</p>
+            <Link href="/" className={styles.emptyButton}>
+              案件を探す
+            </Link>
           </div>
+        ) : (
+          <div className={styles.messagesList}>
+            {filteredMessages.map((message) => {
+              const statusBadge = getStatusBadge(message.status)
+              const hasUnread = message.unreadCount > 0 || !message.isRead
 
-          {matchingSubTab === 'client' && (
-            <>
-              {clientNotifications.length === 0 ? (
-                <div className={styles.empty}>
-                  <div className={styles.emptyIcon}>📩</div>
-                  <h3>応募通知がありません</h3>
-                  <p>あなたの案件に応募があると、ここに通知が表示されます。</p>
-                </div>
-              ) : (
-                <>
-                  {unreadClientCount > 0 && (
-                    <div className={styles.notificationActions}>
-                      <button
-                        onClick={() => markAllNotificationsAsRead('client')}
-                        className={styles.markAllReadButton}
-                      >
-                        すべて既読にする
-                      </button>
+              return (
+                <div
+                  key={message.id}
+                  className={`${styles.messageCard} ${hasUnread ? styles.unread : ''}`}
+                  onClick={() => handleMessageClick(message)}
+                >
+                  <div className={styles.messageAvatar}>
+                    {message.userName.charAt(0).toUpperCase()}
+                  </div>
+                  
+                  <div className={styles.messageContent}>
+                    <div className={styles.messageHeader}>
+                      <div className={styles.messageHeaderLeft}>
+                        <h3 className={styles.messageUserName}>{message.userName}</h3>
+                        <span className={`${styles.statusBadge} ${styles[`status${statusBadge.color}`]}`}>
+                          {statusBadge.text}
+                        </span>
+                      </div>
+                      <span className={styles.messageTime}>
+                        {formatDate(message.createdAt)}
+                      </span>
+                    </div>
+                    
+                    <p className={styles.messageJobTitle}>
+                      📋 {message.jobTitle}
+                    </p>
+                    
+                    {message.lastMessage && (
+                      <p className={styles.messageText}>
+                        {message.lastMessage}
+                      </p>
+                    )}
+                    
+                    {message.message && (
+                      <p className={styles.messageText}>
+                        {message.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {hasUnread && (
+                    <div className={styles.unreadIndicator}>
+                      {message.unreadCount > 0 ? message.unreadCount : '●'}
                     </div>
                   )}
-                  <div className={styles.notificationsList}>
-                    {clientNotifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`${styles.notificationCard} ${
-                          !notification.is_read ? styles.unread : ''
-                        } ${styles.applicationCard}`}
-                      >
-                        <div className={styles.notificationIcon}>
-                          <span className={styles.iconblue}>
-                            {getNotificationIcon(notification.type)}
-                          </span>
-                        </div>
-                        <div className={styles.notificationContent}>
-                          <div className={styles.notificationHeader}>
-                            <h4 className={styles.notificationTitle}>
-                              {getNotificationTitle(notification.type)}
-                            </h4>
-                            <span className={styles.notificationTime}>
-                              {formatDate(notification.created_at)}
-                            </span>
-                          </div>
-                          <p className={styles.notificationMessage}>
-                            {getNotificationDescription(notification)}
-                          </p>
-                          <div className={styles.actionButtons}>
-                            <button
-                              onClick={(e) => handleApprove(notification, e)}
-                              className={styles.approveButton}
-                              disabled={processingApplications.has(notification.application_id)}
-                            >
-                              {processingApplications.has(notification.application_id) ? '処理中...' : '✓ 承認'}
-                            </button>
-                            <button
-                              onClick={(e) => handleReject(notification, e)}
-                              className={styles.rejectButton}
-                              disabled={processingApplications.has(notification.application_id)}
-                            >
-                              {processingApplications.has(notification.application_id) ? '処理中...' : '✕ 拒否'}
-                            </button>
-                          </div>
-                        </div>
-                        {!notification.is_read && (
-                          <div className={styles.unreadDot}></div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-
-          {matchingSubTab === 'applicant' && (
-            <>
-              {applicantNotifications.length === 0 ? (
-                <div className={styles.empty}>
-                  <div className={styles.emptyIcon}>✅</div>
-                  <h3>承認・拒否通知がありません</h3>
-                  <p>応募した案件の結果がここに表示されます。</p>
                 </div>
-              ) : (
-                <>
-                  {unreadApplicantCount > 0 && (
-                    <div className={styles.notificationActions}>
-                      <button
-                        onClick={() => markAllNotificationsAsRead('applicant')}
-                        className={styles.markAllReadButton}
-                      >
-                        すべて既読にする
-                      </button>
-                    </div>
-                  )}
-                  <div className={styles.notificationsList}>
-                    {applicantNotifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`${styles.notificationCard} ${
-                          !notification.is_read ? styles.unread : ''
-                        }`}
-                        onClick={() => handleNotificationClick(notification)}
-                      >
-                        <div className={styles.notificationIcon}>
-                          <span className={notification.type === 'approved' ? styles.icongreen : styles.iconred}>
-                            {getNotificationIcon(notification.type)}
-                          </span>
-                        </div>
-                        <div className={styles.notificationContent}>
-                          <div className={styles.notificationHeader}>
-                            <h4 className={styles.notificationTitle}>
-                              {getNotificationTitle(notification.type)}
-                            </h4>
-                            <span className={styles.notificationTime}>
-                              {formatDate(notification.created_at)}
-                            </span>
-                          </div>
-                          <p className={styles.notificationMessage}>
-                            {getNotificationDescription(notification)}
-                          </p>
-                        </div>
-                        {!notification.is_read && (
-                          <div className={styles.unreadDot}></div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
