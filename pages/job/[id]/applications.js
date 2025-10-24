@@ -131,10 +131,10 @@ export default function ApplicationsPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1>応募者一覧</h1>
         <button onClick={() => router.back()} className={styles.backButton}>
           ← 案件詳細に戻る
         </button>
+        <h1>応募者一覧</h1>
       </div>
 
       {job && (
