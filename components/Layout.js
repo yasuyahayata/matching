@@ -7,13 +7,14 @@ import styles from './Layout.module.css';
 export default function Layout({ children }) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadChatCount = async () => {
     if (status === 'loading') return;
     
     if (!session) {
-      setUnreadCount(0);
+      setUnreadChatCount(0);
       return;
     }
 
@@ -22,25 +23,53 @@ export default function Layout({ children }) {
       if (res.ok) {
         const data = await res.json();
         const count = Number(data.totalUnread) || 0;
-        setUnreadCount(count);
+        setUnreadChatCount(count);
       } else {
-        setUnreadCount(0);
+        setUnreadChatCount(0);
       }
     } catch (error) {
-      console.error('Error fetching unread count:', error);
-      setUnreadCount(0);
+      console.error('Error fetching unread chat count:', error);
+      setUnreadChatCount(0);
     }
   };
 
+  const fetchUnreadNotificationCount = async () => {
+    if (status === 'loading') return;
+    
+    if (!session) {
+      setUnreadNotificationCount(0);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/notifications/unread-count');
+      if (res.ok) {
+        const data = await res.json();
+        const count = Number(data.count) || 0;
+        setUnreadNotificationCount(count);
+      } else {
+        setUnreadNotificationCount(0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread notification count:', error);
+      setUnreadNotificationCount(0);
+    }
+  };
+
+  const fetchAllUnreadCounts = () => {
+    fetchUnreadChatCount();
+    fetchUnreadNotificationCount();
+  };
+
   useEffect(() => {
-    fetchUnreadCount();
+    fetchAllUnreadCounts();
   }, [session, status]);
 
   useEffect(() => {
     if (!session) return;
 
     const interval = setInterval(() => {
-      fetchUnreadCount();
+      fetchAllUnreadCounts();
     }, 30000);
 
     return () => clearInterval(interval);
@@ -49,7 +78,7 @@ export default function Layout({ children }) {
   useEffect(() => {
     const handleRouteChange = () => {
       if (session) {
-        fetchUnreadCount();
+        fetchAllUnreadCounts();
       }
     };
 
@@ -58,6 +87,9 @@ export default function Layout({ children }) {
       router.events.off('routeChangeComplete', handleRouteChange);
     };
   }, [session, router.events]);
+
+  // チャットとマッチング通知の合計未読数
+  const totalUnreadCount = unreadChatCount + unreadNotificationCount;
 
   return (
     <div className={styles.container}>
@@ -73,12 +105,11 @@ export default function Layout({ children }) {
               <Link href="/">
                 <span className={styles.navLink}>案件一覧</span>
               </Link>
-              {/* マッチングタブを削除 */}
               <Link href="/messages">
                 <span className={styles.navLink}>
                   💬 メッセージ
-                  {unreadCount > 0 && (
-                    <span className={styles.unreadBadge}>{unreadCount}</span>
+                  {totalUnreadCount > 0 && (
+                    <span className={styles.unreadBadge}>{totalUnreadCount}</span>
                   )}
                 </span>
               </Link>

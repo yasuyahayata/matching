@@ -2,362 +2,389 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+  min-height: 100vh;
 }
 
 .header {
-  text-align: center;
   margin-bottom: 2rem;
 }
 
 .header h1 {
-  font-size: 2.5rem;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+/* タブ */
+.tabs {
+  display: flex;
+  gap: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 2rem;
+}
+
+.tab {
+  position: relative;
+  padding: 1rem 1.5rem;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 3px solid transparent;
+}
+
+.tab:hover {
+  color: #4b5563;
+}
+
+.activeTab {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+
+.badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: #ef4444;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  min-width: 1.25rem;
+  text-align: center;
+}
+
+/* コンテンツ */
+.content {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* 空の状態 */
+.empty {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.emptyIcon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.empty h3 {
+  font-size: 1.5rem;
   font-weight: bold;
   color: #1f2937;
   margin-bottom: 0.5rem;
 }
 
-.subtitle {
+.empty p {
   color: #6b7280;
-  font-size: 1.1rem;
+  margin-bottom: 2rem;
 }
 
+.emptyButton {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  font-weight: 600;
+  transition: transform 0.2s;
+}
+
+.emptyButton:hover {
+  transform: translateY(-2px);
+}
+
+/* チャットルーム一覧 */
+.chatRoomsList {
+  display: flex;
+  flex-direction: column;
+}
+
+.chatRoomCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-decoration: none;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.chatRoomCard:hover {
+  background: #f9fafb;
+}
+
+.chatRoomCard:last-child {
+  border-bottom: none;
+}
+
+.chatRoomAvatar {
+  width: 3rem;
+  height: 3rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.chatRoomInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.chatRoomHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.chatRoomName {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.chatRoomTime {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.chatRoomJob {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0.25rem 0;
+}
+
+.chatRoomLastMessage {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  margin: 0.25rem 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unreadBadge {
+  background: #ef4444;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+/* 通知一覧 */
+.notificationActions {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.markAllReadButton {
+  padding: 0.5rem 1rem;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.markAllReadButton:hover {
+  background: #e5e7eb;
+}
+
+.notificationsList {
+  display: flex;
+  flex-direction: column;
+}
+
+.notificationCard {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.notificationCard:hover {
+  background: #f9fafb;
+}
+
+.notificationCard:last-child {
+  border-bottom: none;
+}
+
+.notificationCard.unread {
+  background: #eff6ff;
+}
+
+.notificationCard.unread:hover {
+  background: #dbeafe;
+}
+
+.notificationIcon {
+  flex-shrink: 0;
+}
+
+.notificationIcon span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  font-size: 1.5rem;
+}
+
+.iconblue {
+  background: #dbeafe;
+}
+
+.icongreen {
+  background: #dcfce7;
+}
+
+.iconred {
+  background: #fee2e2;
+}
+
+.icongray {
+  background: #f3f4f6;
+}
+
+.notificationContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.notificationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.notificationTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.notificationTime {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.notificationMessage {
+  font-size: 0.875rem;
+  color: #4b5563;
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+.notificationJobLink {
+  display: inline-block;
+  font-size: 0.875rem;
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.notificationJobLink:hover {
+  text-decoration: underline;
+}
+
+.unreadDot {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  background: #3b82f6;
+  border-radius: 50%;
+}
+
+/* ローディング */
 .loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
+  padding: 4rem 2rem;
 }
 
 .spinner {
-  border: 4px solid #f3f4f6;
-  border-top: 4px solid #6366f1;
+  width: 3rem;
+  height: 3rem;
+  border: 4px solid #e5e7eb;
+  border-top-color: #3b82f6;
   border-radius: 50%;
-  width: 50px;
-  height: 50px;
   animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
+.loading p {
+  margin-top: 1rem;
+  color: #6b7280;
+}
+
+/* エラー */
 .error {
   text-align: center;
-  padding: 3rem;
-  color: #ef4444;
-  font-size: 1.1rem;
-}
-
-/* メインタブ */
-.mainTabs {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  justify-content: center;
-}
-
-.mainTab {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 2.5rem;
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 1rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  position: relative;
-}
-
-.mainTab:hover {
-  border-color: #667eea;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-}
-
-.mainTabActive {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-color: transparent;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
-}
-
-.tabIcon {
-  font-size: 1.5rem;
-}
-
-.tabLabel {
-  font-size: 1.1rem;
-}
-
-.tabCount {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 0.6rem;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 9999px;
-  font-size: 0.9rem;
-  font-weight: bold;
-}
-
-.mainTabActive .tabCount {
-  background: rgba(255, 255, 255, 0.9);
-  color: #667eea;
-}
-
-/* サブタブ */
-.subTabs {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  padding: 0 1rem;
-}
-
-.subTab {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: #f9fafb;
-  border: 2px solid #e5e7eb;
-  border-radius: 0.75rem;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  flex: 1;
-  justify-content: center;
-}
-
-.subTab:hover {
-  border-color: #667eea;
-  background: #f3f4f6;
-}
-
-.subTabActive {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-color: transparent;
-}
-
-.subTabIcon {
-  font-size: 1.25rem;
-}
-
-.subTabLabel {
-  font-size: 1rem;
-}
-
-.subTabCount {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 0.5rem;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  font-weight: bold;
-  margin-left: 0.25rem;
-}
-
-.subTabActive .subTabCount {
-  background: rgba(255, 255, 255, 0.9);
-  color: #667eea;
-}
-
-/* 空の状態 */
-.emptyState {
-  text-align: center;
   padding: 4rem 2rem;
-  background: white;
-  border-radius: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.emptyIcon {
-  font-size: 5rem;
+.error p {
+  color: #ef4444;
   margin-bottom: 1rem;
 }
 
-.emptyText {
-  font-size: 1.25rem;
-  color: #4b5563;
-  margin-bottom: 0.5rem;
+.error button {
+  padding: 0.75rem 1.5rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
   font-weight: 600;
-}
-
-.hint {
-  color: #9ca3af;
-  font-size: 0.95rem;
-}
-
-/* チャット一覧 */
-.chatList {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.chatItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 1rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
-.chatItem:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-  transform: translateY(-2px);
-}
-
-.chatInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-/* 案件バッジ */
-.jobBadge {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.category {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.jobTitle {
-  font-size: 0.875rem;
-  color: #4b5563;
-  font-weight: 600;
-}
-
-/* ユーザー情報 */
-.chatHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
-
-.userInfo {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.avatar {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: bold;
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.userName {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 0.25rem;
-}
-
-.email {
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.roleBadge {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  background: #f3f4f6;
-  color: #4b5563;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  margin-top: 0.25rem;
-}
-
-.unreadBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 0.5rem;
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  font-weight: bold;
-  flex-shrink: 0;
-}
-
-/* 最新メッセージ */
-.latestMessage {
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-  line-height: 1.5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-/* メタ情報 */
-.chatMeta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem;
-  flex-shrink: 0;
-  margin-left: 1rem;
-}
-
-.timestamp {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  white-space: nowrap;
-}
-
-.arrow {
-  font-size: 1.5rem;
-  color: #667eea;
-  transition: transform 0.2s;
-}
-
-.chatItem:hover .arrow {
-  transform: translateX(4px);
+.error button:hover {
+  background: #2563eb;
 }
 
 /* レスポンシブ */
@@ -367,44 +394,142 @@
   }
 
   .header h1 {
-    font-size: 2rem;
+    font-size: 1.5rem;
   }
 
-  .mainTabs {
-    flex-direction: column;
+  .tabs {
+    gap: 0.5rem;
   }
 
-  .mainTab {
-    width: 100%;
-    justify-content: center;
+  .tab {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
   }
 
-  .subTabs {
-    flex-direction: column;
+  .chatRoomCard,
+  .notificationCard {
+    padding: 1rem;
   }
 
-  .chatItem {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .chatMeta {
-    flex-direction: row;
-    justify-content: space-between;
-    width: 100%;
-    margin-left: 0;
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #e5e7eb;
-  }
-
-  .avatar {
-    width: 40px;
-    height: 40px;
+  .chatRoomAvatar {
+    width: 2.5rem;
+    height: 2.5rem;
     font-size: 1rem;
   }
 
-  .userName {
-    font-size: 1rem;
+  .notificationIcon span {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.25rem;
   }
+}
+
+/* サブタブ */
+.subTabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.subTab {
+  position: relative;
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subTab:hover {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.activeSubTab {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.subBadge {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  background: #ef4444;
+  color: white;
+  font-size: 0.625rem;
+  font-weight: bold;
+  padding: 0.125rem 0.375rem;
+  border-radius: 9999px;
+  min-width: 1rem;
+  text-align: center;
+}
+
+/* 応募通知カード（クリック無効） */
+.applicationCard {
+  cursor: default;
+}
+
+.applicationCard:hover {
+  background: white;
+}
+
+.applicationCard.unread:hover {
+  background: #eff6ff;
+}
+
+/* アクションボタン */
+.actionButtons {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.approveButton,
+.rejectButton {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.approveButton {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.approveButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.approveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rejectButton {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+.rejectButton:hover:not(:disabled) {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.rejectButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

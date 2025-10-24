@@ -108,9 +108,12 @@ const skillDetails = {
 export default function Profile() {
   const { data: session } = useSession()
   const router = useRouter()
+  const { email } = router.query // クエリパラメータから email を取得
+  
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
+  const [isOwnProfile, setIsOwnProfile] = useState(false) // 自分のプロフィールかどうか
   
   const [profile, setProfile] = useState({
     full_name: '',
@@ -137,19 +140,50 @@ export default function Profile() {
 
   useEffect(() => {
     if (session) {
-      loadProfile()
-      loadPostedJobs()
+      // email パラメータがあれば他のユーザーのプロフィール、なければ自分のプロフィール
+      const targetEmail = email || session.user.email
+      const isOwn = !email || email === session.user.email
+      
+      setIsOwnProfile(isOwn)
+      loadProfile(targetEmail)
+      loadPostedJobs(targetEmail)
     }
-  }, [session])
+  }, [session, email])
 
-  const loadProfile = async () => {
+  // チャットルームから名前を取得する関数
+  const getUserNameFromChatRooms = async (email) => {
+    try {
+      const { data, error } = await supabase
+        .from('chat_rooms')
+        .select('user1_email, user1_name, user2_email, user2_name')
+        .or(`user1_email.eq.${email},user2_email.eq.${email}`)
+        .limit(1)
+        .maybeSingle()
+
+      if (error || !data) return null
+
+      // メールアドレスに対応する名前を返す
+      if (data.user1_email === email) {
+        return data.user1_name
+      } else if (data.user2_email === email) {
+        return data.user2_name
+      }
+      
+      return null
+    } catch (error) {
+      console.error('名前取得エラー:', error)
+      return null
+    }
+  }
+
+  const loadProfile = async (targetEmail) => {
     try {
       setLoading(true)
       
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('email', session.user.email)
+        .eq('email', targetEmail)
         .maybeSingle()
 
       if (error && error.code !== 'PGRST116') {
@@ -158,8 +192,8 @@ export default function Profile() {
 
       if (data) {
         setProfile({
-          full_name: data.full_name || session.user.name || '',
-          email: data.email || session.user.email || '',
+          full_name: data.full_name || '',
+          email: data.email || '',
           bio: data.bio || '',
           company_website: data.company_website || '',
           company_name: data.company_name || '',
@@ -168,12 +202,15 @@ export default function Profile() {
           interested_challenges: data.interested_challenges || [],
           expertise_methods: data.expertise_methods || [],
           skills: data.skills || [],
-          avatar_url: data.avatar_url || session.user.image || ''
+          avatar_url: data.avatar_url || ''
         })
       } else {
+        // プロフィールが見つからない場合、チャットルームから名前を取得
+        const userName = await getUserNameFromChatRooms(targetEmail)
+        
         setProfile({
-          full_name: session.user.name || '',
-          email: session.user.email || '',
+          full_name: userName || '',
+          email: targetEmail,
           bio: '',
           company_website: '',
           company_name: '',
@@ -182,7 +219,7 @@ export default function Profile() {
           interested_challenges: [],
           expertise_methods: [],
           skills: [],
-          avatar_url: session.user.image || ''
+          avatar_url: ''
         })
       }
     } catch (error) {
@@ -192,12 +229,12 @@ export default function Profile() {
     }
   }
 
-  const loadPostedJobs = async () => {
+  const loadPostedJobs = async (targetEmail) => {
     try {
       const { data, error } = await supabase
         .from('jobs')
         .select('*')
-        .eq('client_email', session.user.email)
+        .eq('client_email', targetEmail)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -278,6 +315,12 @@ export default function Profile() {
   }
 
   const handleSave = async () => {
+    // 自分のプロフィールの場合のみ保存可能
+    if (!isOwnProfile) {
+      alert('他のユーザーのプロフィールは編集できません')
+      return
+    }
+
     try {
       setSaving(true)
 
@@ -333,7 +376,7 @@ export default function Profile() {
       }
 
       alert('プロフィールを保存しました！')
-      await loadProfile()
+      await loadProfile(session.user.email)
       setActiveTab('overview')
     } catch (error) {
       console.error('保存エラー:', error)
@@ -389,7 +432,10 @@ export default function Profile() {
             )}
           </div>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">{profile.full_name || 'ユーザー'}</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+              {profile.full_name || 'ユーザー'}
+              {!isOwnProfile && <span className="text-sm text-gray-500 ml-2">(他のユーザー)</span>}
+            </h1>
             <p className="text-gray-600 mb-2">{profile.email}</p>
             {profile.company_name && (
               <p className="text-gray-600 mb-2">🏢 {profile.company_name}</p>
@@ -403,23 +449,39 @@ export default function Profile() {
       <div className="bg-white rounded-2xl shadow-xl mb-8">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8 px-8">
-            {[
-              { id: 'overview', label: '概要', icon: '📊' },
-              { id: 'posted-jobs', label: '投稿した案件', icon: '📝' },
-              { id: 'edit', label: 'プロフィール編集', icon: '✏️' }
-            ].map((tab) => (
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
+                activeTab === 'overview'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📊 概要
+            </button>
+            <button
+              onClick={() => setActiveTab('posted-jobs')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
+                activeTab === 'posted-jobs'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📝 投稿した案件
+            </button>
+            {/* 自分のプロフィールの場合のみ編集タブを表示 */}
+            {isOwnProfile && (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => setActiveTab('edit')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
-                  activeTab === tab.id
+                  activeTab === 'edit'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                {tab.icon} {tab.label}
+                ✏️ プロフィール編集
               </button>
-            ))}
+            )}
           </nav>
         </div>
 
@@ -477,7 +539,7 @@ export default function Profile() {
                  profile.expertise_methods.length === 0 && 
                  profile.skills.length === 0 && (
                   <p className="text-gray-500 text-center py-8">
-                    プロフィール編集から強みを設定してください
+                    {isOwnProfile ? 'プロフィール編集から強みを設定してください' : 'まだ強みが設定されていません'}
                   </p>
                 )}
               </div>
@@ -500,25 +562,33 @@ export default function Profile() {
             <div>
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-semibold text-gray-800">投稿した案件 ({postedJobs.length}件)</h3>
-                <Link
-                  href="/post-job"
-                  className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-md"
-                >
-                  + 新しい案件を投稿
-                </Link>
+                {isOwnProfile && (
+                  <Link
+                    href="/post-job"
+                    className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-md"
+                  >
+                    + 新しい案件を投稿
+                  </Link>
+                )}
               </div>
 
               {postedJobs.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-gray-400 text-6xl mb-4">📝</div>
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">まだ案件を投稿していません</h3>
-                  <p className="text-gray-500 mb-4">最初の案件を投稿してみましょう</p>
-                  <Link
-                    href="/post-job"
-                    className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-md"
-                  >
-                    案件を投稿する
-                  </Link>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                    {isOwnProfile ? 'まだ案件を投稿していません' : 'まだ案件がありません'}
+                  </h3>
+                  {isOwnProfile && (
+                    <>
+                      <p className="text-gray-500 mb-4">最初の案件を投稿してみましょう</p>
+                      <Link
+                        href="/post-job"
+                        className="inline-block bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-md"
+                      >
+                        案件を投稿する
+                      </Link>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -576,7 +646,7 @@ export default function Profile() {
           )}
 
           {/* プロフィール編集タブ */}
-          {activeTab === 'edit' && (
+          {activeTab === 'edit' && isOwnProfile && (
             <div>
               <h3 className="text-xl font-semibold text-gray-800 mb-6">プロフィール編集</h3>
 

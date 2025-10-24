@@ -321,3 +321,150 @@
     max-width: 85%;
   }
 }
+
+/* ヘッダーの改善 */
+.chatHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: white;
+  border-bottom: 2px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+
+.backButton {
+  padding: 0.5rem 1rem;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.backButton:hover {
+  background: #e5e7eb;
+}
+
+/* ユーザープロフィール */
+.userProfile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+  text-decoration: none;
+  flex: 1;
+}
+
+.userProfile:hover {
+  background: #f3f4f6;
+}
+
+.userAvatar {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.userName {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.userEmail {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* 案件リンク */
+.jobLink {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.jobLink:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.jobIcon {
+  font-size: 1.25rem;
+}
+
+.jobTitle {
+  font-size: 0.9375rem;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 通知バナー */
+.notificationBanner {
+  padding: 1rem;
+  background: #fff3cd;
+  border-bottom: 1px solid #ffc107;
+}
+
+.notificationBanner p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #856404;
+}
+
+/* レスポンシブ */
+@media (max-width: 768px) {
+  .chatHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .backButton {
+    align-self: flex-start;
+  }
+
+  .userProfile {
+    flex: none;
+  }
+
+  .jobLink {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .jobTitle {
+    max-width: none;
+  }
+}

@@ -13,10 +13,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    // チャットルーム情報を取得
+    // チャットルーム情報を取得（案件情報も含める）
     const { data: chatRoom, error } = await supabase
       .from('chat_rooms')
-      .select('*')
+      .select(`
+        *,
+        jobs (
+          id,
+          title,
+          category,
+          status
+        )
+      `)
       .eq('id', roomId)
       .single()
 

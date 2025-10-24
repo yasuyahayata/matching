@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useSession } from 'next-auth/react'
+import Link from 'next/link'
 import styles from '../../styles/Chat.module.css'
 
 export default function ChatRoom() {
@@ -47,7 +48,7 @@ export default function ChatRoom() {
     return () => clearInterval(interval)
   }, [roomId, status])
 
-  // 💬 新機能: ページを開いたら既読にする
+  // ページを開いたら既読にする
   useEffect(() => {
     if (roomId && !hasMarkedAsReadRef.current && messages.length > 0) {
       markAsRead()
@@ -55,7 +56,7 @@ export default function ChatRoom() {
     }
   }, [roomId, messages])
 
-  // 💬 新機能: ページがアクティブになったら既読にする
+  // ページがアクティブになったら既読にする
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && roomId) {
@@ -123,7 +124,7 @@ export default function ChatRoom() {
     }
   }
 
-  // 💬 新機能: メッセージを既読にする
+  // メッセージを既読にする
   const markAsRead = async () => {
     try {
       await fetch(`/api/chat-rooms/${roomId}/mark-as-read`, {
@@ -229,16 +230,42 @@ export default function ChatRoom() {
 
   return (
     <div className={styles.container}>
+      {/* 改善されたヘッダー */}
       <div className={styles.chatHeader}>
         <button onClick={() => router.back()} className={styles.backButton}>
           ← 戻る
         </button>
-        <h1>💬 {otherUser.name}とのチャット</h1>
+
+        {/* 相手のアイコンと名前 */}
+        <Link 
+          href={`/profile?email=${otherUser.email}`}
+          className={styles.userProfile}
+        >
+          <div className={styles.userAvatar}>
+            {otherUser.name.charAt(0).toUpperCase()}
+          </div>
+          <div className={styles.userInfo}>
+            <h2 className={styles.userName}>{otherUser.name}</h2>
+            <span className={styles.userEmail}>{otherUser.email}</span>
+          </div>
+        </Link>
+
+        {/* 案件詳細アイコン */}
+        {chatRoom.jobs && (
+          <Link 
+            href={`/job/${chatRoom.jobs.id}`}
+            className={styles.jobLink}
+            title="案件詳細を見る"
+          >
+            <span className={styles.jobIcon}>📋</span>
+            <span className={styles.jobTitle}>{chatRoom.jobs.title}</span>
+          </Link>
+        )}
       </div>
 
       {notificationPermission === 'default' && (
-        <div style={{ padding: '1rem', backgroundColor: '#fff3cd', borderBottom: '1px solid #ffc107' }}>
-          <p style={{ margin: 0, fontSize: '0.9rem', color: '#856404' }}>
+        <div className={styles.notificationBanner}>
+          <p>
             💡 新しいメッセージの通知を受け取るには、ブラウザの通知を許可してください
           </p>
         </div>
