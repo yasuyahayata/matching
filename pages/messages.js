@@ -8,10 +8,10 @@ export default function Messages() {
   const { data: session, status } = useSession()
   const router = useRouter()
   
-  const [messages, setMessages] = useState([])
+  const [chatRooms, setChatRooms] = useState([])
+  const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [filterStatus, setFilterStatus] = useState('all') // 'all', 'pending', 'matched'
 
   useEffect(() => {
     if (status === 'loading') return
@@ -21,97 +21,44 @@ export default function Messages() {
       return
     }
 
-    fetchMessages()
+    fetchData()
+    
+    // 5秒ごとに更新
+    const interval = setInterval(() => {
+      fetchData()
+    }, 5000)
+    
+    return () => clearInterval(interval)
   }, [status])
 
-  const fetchMessages = async () => {
+  const fetchData = async () => {
     try {
-      setLoading(true)
-
-      // チャットルームと通知を並行取得
-      const [chatRoomsRes, notificationsRes] = await Promise.all([
-        fetch('/api/chat-rooms'),
-        fetch('/api/notifications')
-      ])
-
-      if (!chatRoomsRes.ok || !notificationsRes.ok) {
-        throw new Error('データの取得に失敗しました')
+      if (loading && chatRooms.length > 0) {
+        setLoading(false)
+      } else {
+        setLoading(true)
       }
 
-      const chatRooms = await chatRoomsRes.json()
-      const notifications = await notificationsRes.json()
+      // チャットルームと応募情報を並行取得
+      const [chatRoomsRes, applicationsRes] = await Promise.all([
+        fetch('/api/chat-rooms'),
+        fetch('/api/applications/my-applications')
+      ])
+      
+      if (!chatRoomsRes.ok) {
+        throw new Error('チャットルームの取得に失敗しました')
+      }
 
-      // メッセージリストを作成
-      const messageList = []
+      const chatRoomsData = await chatRoomsRes.json()
+      setChatRooms(chatRoomsData)
 
-      // チャットルーム（マッチング済み）を追加
-      chatRooms.forEach(room => {
-        const otherUser = 
-          room.user1_email === session?.user?.email
-            ? { email: room.user2_email, name: room.user2_name }
-            : { email: room.user1_email, name: room.user1_name }
-
-        messageList.push({
-          id: `chat-${room.id}`,
-          type: 'chat',
-          status: 'matched',
-          roomId: room.id,
-          jobId: room.jobs?.id,
-          jobTitle: room.jobs?.title || '案件情報なし',
-          userName: otherUser.name,
-          userEmail: otherUser.email,
-          lastMessage: room.last_message,
-          lastMessageAt: room.last_message_at,
-          unreadCount: room.unread_count || 0,
-          createdAt: room.last_message_at || room.created_at
-        })
-      })
-
-      // 通知（マッチング前）を追加
-      notifications.forEach(notification => {
-        // 応募通知（発注側）
-        if (notification.type === 'application') {
-          messageList.push({
-            id: `notification-${notification.id}`,
-            type: 'notification',
-            status: 'pending',
-            notificationId: notification.id,
-            notificationType: 'application',
-            jobId: notification.job_id,
-            jobTitle: notification.job_title,
-            userName: notification.sender_name,
-            userEmail: notification.sender_email,
-            message: `${notification.sender_name}さんから応募がありました`,
-            isRead: notification.is_read,
-            createdAt: notification.created_at,
-            applicationId: notification.application_id
-          })
-        }
-        // 承認・拒否通知（受注側）
-        else if (notification.type === 'approved' || notification.type === 'rejected') {
-          messageList.push({
-            id: `notification-${notification.id}`,
-            type: 'notification',
-            status: notification.type === 'approved' ? 'matched' : 'rejected',
-            notificationId: notification.id,
-            notificationType: notification.type,
-            jobId: notification.job_id,
-            jobTitle: notification.job_title,
-            userName: notification.sender_name,
-            userEmail: notification.sender_email,
-            message: notification.type === 'approved' 
-              ? '応募が承認されました' 
-              : '応募は見送りとなりました',
-            isRead: notification.is_read,
-            createdAt: notification.created_at
-          })
-        }
-      })
-
-      // 日時順にソート（新しい順）
-      messageList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-
-      setMessages(messageList)
+      // 応募情報を取得（エラーでも続行）
+      if (applicationsRes.ok) {
+        const applicationsData = await applicationsRes.json()
+        setApplications(applicationsData)
+      } else {
+        setApplications([])
+      }
     } catch (err) {
       console.error('データ取得エラー:', err)
       setError(err.message)
@@ -120,72 +67,38 @@ export default function Messages() {
     }
   }
 
-  const handleMessageClick = async (message) => {
-    // チャットルームの場合
-    if (message.type === 'chat') {
-      router.push(`/chat/${message.roomId}`)
-      return
-    }
+  const handleChatRoomClick = (roomId) => {
+    router.push(`/chat/${roomId}`)
+  }
 
-    // 通知の場合
-    if (message.type === 'notification') {
-      // 既読にする
-      if (!message.isRead) {
-        await markNotificationAsRead(message.notificationId)
-      }
+  const getStatusInfo = (room) => {
+    // job_id がある場合、そのjob_idの応募ステータスを確認
+    if (room.job_id) {
+      // このチャットルームに紐づく応募を探す
+      const relatedApplication = applications.find(app => 
+        app.job_id?.toString() === room.job_id?.toString() &&
+        app.status === 'pending'
+      )
 
-      // 承認通知の場合はチャットルームに遷移
-      if (message.notificationType === 'approved') {
-        const chatMessage = messages.find(m => 
-          m.type === 'chat' && 
-          m.jobId?.toString() === message.jobId?.toString()
-        )
-        if (chatMessage) {
-          router.push(`/chat/${chatMessage.roomId}`)
-          return
+      if (relatedApplication) {
+        // 応募が審査中なら「審査中」
+        return {
+          text: '審査中',
+          color: 'yellow'
+        }
+      } else {
+        // 承認済みなら「マッチング」
+        return {
+          text: 'マッチング',
+          color: 'green'
         }
       }
-
-      // それ以外は案件詳細へ
-      router.push(`/job/${message.jobId}`)
     }
-  }
-
-  const markNotificationAsRead = async (notificationId) => {
-    try {
-      await fetch('/api/notifications/mark-as-read', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          notificationIds: [notificationId]
-        })
-      })
-
-      // ローカル状態を更新
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.notificationId === notificationId
-            ? { ...msg, isRead: true }
-            : msg
-        )
-      )
-    } catch (err) {
-      console.error('既読更新エラー:', err)
-    }
-  }
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'pending':
-        return { text: 'マッチング前', color: 'yellow' }
-      case 'matched':
-        return { text: 'マッチング済', color: 'green' }
-      case 'rejected':
-        return { text: '見送り', color: 'gray' }
-      default:
-        return { text: '', color: 'gray' }
+    
+    // job_id がない場合は「お問い合わせ」
+    return {
+      text: 'お問い合わせ',
+      color: 'blue'
     }
   }
 
@@ -214,7 +127,7 @@ export default function Messages() {
     }
   }
 
-  if (loading) {
+  if (loading && chatRooms.length === 0) {
     return (
       <div className={styles.container}>
         <div className={styles.loading}>
@@ -236,104 +149,71 @@ export default function Messages() {
     )
   }
 
-  // フィルター処理
-  const filteredMessages = messages.filter(message => {
-    if (filterStatus === 'all') return true
-    return message.status === filterStatus
-  })
-
-  const pendingCount = messages.filter(m => m.status === 'pending').length
-  const matchedCount = messages.filter(m => m.status === 'matched').length
-
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>💬 メッセージ</h1>
       </div>
 
-      {/* フィルターボタン */}
-      <div className={styles.filterButtons}>
-        <button
-          className={`${styles.filterButton} ${filterStatus === 'all' ? styles.active : ''}`}
-          onClick={() => setFilterStatus('all')}
-        >
-          すべて ({messages.length})
-        </button>
-        <button
-          className={`${styles.filterButton} ${filterStatus === 'pending' ? styles.active : ''}`}
-          onClick={() => setFilterStatus('pending')}
-        >
-          マッチング前({pendingCount})
-        </button>
-        <button
-          className={`${styles.filterButton} ${filterStatus === 'matched' ? styles.active : ''}`}
-          onClick={() => setFilterStatus('matched')}
-        >
-          マッチング済 ({matchedCount})
-        </button>
-      </div>
-
-      {/* メッセージ一覧 */}
       <div className={styles.content}>
-        {filteredMessages.length === 0 ? (
+        {chatRooms.length === 0 ? (
           <div className={styles.empty}>
             <div className={styles.emptyIcon}>💬</div>
-            <h3>メッセージがありません</h3>
-            <p>案件に応募すると、ここにメッセージが表示されます。</p>
+            <h3>チャットルームがありません</h3>
+            <p>案件に応募して承認されると、チャットルームが作成されます。</p>
             <Link href="/" className={styles.emptyButton}>
               案件を探す
             </Link>
           </div>
         ) : (
           <div className={styles.messagesList}>
-            {filteredMessages.map((message) => {
-              const statusBadge = getStatusBadge(message.status)
-              const hasUnread = message.unreadCount > 0 || !message.isRead
+            {chatRooms.map((room) => {
+              const otherUser = 
+                room.user1_email === session?.user?.email
+                  ? { email: room.user2_email, name: room.user2_name }
+                  : { email: room.user1_email, name: room.user1_name }
+
+              const hasUnread = room.unread_count > 0
+              const statusInfo = getStatusInfo(room)
 
               return (
                 <div
-                  key={message.id}
+                  key={room.id}
                   className={`${styles.messageCard} ${hasUnread ? styles.unread : ''}`}
-                  onClick={() => handleMessageClick(message)}
+                  onClick={() => handleChatRoomClick(room.id)}
                 >
                   <div className={styles.messageAvatar}>
-                    {message.userName.charAt(0).toUpperCase()}
+                    {otherUser.name.charAt(0).toUpperCase()}
                   </div>
                   
                   <div className={styles.messageContent}>
                     <div className={styles.messageHeader}>
                       <div className={styles.messageHeaderLeft}>
-                        <h3 className={styles.messageUserName}>{message.userName}</h3>
-                        <span className={`${styles.statusBadge} ${styles[`status${statusBadge.color}`]}`}>
-                          {statusBadge.text}
+                        <h3 className={styles.messageUserName}>{otherUser.name}</h3>
+                        <span className={`${styles.statusBadge} ${styles[`status${statusInfo.color}`]}`}>
+                          {statusInfo.text}
                         </span>
                       </div>
                     </div>
                     
                     <p className={styles.messageJobTitle}>
-                      📋 {message.jobTitle}
+                      📋 {room.jobs?.title || 'お問い合わせ'}
                     </p>
                     
-                    {message.lastMessage && (
+                    {room.last_message && (
                       <p className={styles.messageText}>
-                        {message.lastMessage}
-                      </p>
-                    )}
-                    
-                    {message.message && (
-                      <p className={styles.messageText}>
-                        {message.message}
+                        {room.last_message}
                       </p>
                     )}
 
                     <span className={styles.messageTime}>
-                      {formatDate(message.createdAt)}
+                      {formatDate(room.last_message_at || room.created_at)}
                     </span>
                   </div>
 
                   {hasUnread && (
                     <div className={styles.unreadIndicator}>
-                      {message.unreadCount > 0 ? message.unreadCount : '●'}
+                      {room.unread_count}
                     </div>
                   )}
                 </div>

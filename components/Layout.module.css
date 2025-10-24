@@ -130,6 +130,9 @@
 .main {
   flex: 1;
   background: transparent;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 @media (max-width: 768px) {

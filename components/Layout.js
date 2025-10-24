@@ -61,24 +61,29 @@ export default function Layout({ children }) {
     fetchUnreadNotificationCount();
   };
 
+  // 初回読み込み
   useEffect(() => {
     fetchAllUnreadCounts();
   }, [session, status]);
 
+  // 5秒ごとに更新
   useEffect(() => {
     if (!session) return;
 
     const interval = setInterval(() => {
       fetchAllUnreadCounts();
-    }, 30000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [session]);
 
+  // ページ遷移時に更新
   useEffect(() => {
     const handleRouteChange = () => {
       if (session) {
-        fetchAllUnreadCounts();
+        setTimeout(() => {
+          fetchAllUnreadCounts();
+        }, 300);
       }
     };
 
@@ -87,6 +92,20 @@ export default function Layout({ children }) {
       router.events.off('routeChangeComplete', handleRouteChange);
     };
   }, [session, router.events]);
+
+  // ページフォーカス時に更新
+  useEffect(() => {
+    const handleFocus = () => {
+      if (session) {
+        fetchAllUnreadCounts();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [session]);
 
   // チャットとマッチング通知の合計未読数
   const totalUnreadCount = unreadChatCount + unreadNotificationCount;

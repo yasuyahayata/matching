@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
-import { getSession } from 'next-auth/react'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '../auth/[...nextauth]'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -7,7 +8,7 @@ const supabase = createClient(
 )
 
 export default async function handler(req, res) {
-  const session = await getSession({ req })
+  const session = await getServerSession(req, res, authOptions)
 
   if (!session) {
     return res.status(401).json({ error: '認証が必要です' })
