@@ -201,7 +201,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>案件一覧 | マッチングシステム(汎用)</title>
+        <title>matching</title>
         <meta name="description" content="企業と企業をマッチングするプラットフォーム" />
       </Head>
 
