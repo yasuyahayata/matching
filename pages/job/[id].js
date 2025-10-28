@@ -557,7 +557,7 @@ export default function JobDetail() {
       </button>
     </div>
 
-    <div className="flex gap-3">  {/* ← この部分を修正 */}
+    <div className="flex gap-3">
       <Link 
         href={`/job/${job.id}/applications`}
         className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 text-white py-4 px-8 rounded-lg hover:from-green-700 hover:to-teal-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg text-center whitespace-nowrap"
@@ -674,9 +674,13 @@ export default function JobDetail() {
             </div>
             
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-800 mb-1">
+              <Link 
+                href={`/profile?user=${job.client_name}`}
+                className="text-lg font-semibold text-gray-800 mb-1 hover:text-blue-600 transition-colors cursor-pointer inline-flex items-center gap-2"
+              >
                 {clientProfile?.full_name || job.client_name || 'クライアント'}
-              </h3>
+                <span className="text-blue-600">→</span>
+              </Link>
               
               {clientProfile?.company_name && (
                 <p className="text-gray-600 mb-2">🏢 {clientProfile.company_name}</p>
