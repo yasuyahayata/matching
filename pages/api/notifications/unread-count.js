@@ -16,12 +16,21 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      // 未読通知の数を取得
-      const { count, error } = await supabase
+      // 🆕 除外するタイプをクエリパラメータから取得
+      const { exclude } = req.query
+
+      let query = supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
         .eq('recipient_email', session.user.email)
         .eq('is_read', false)
+
+      // 🆕 特定のタイプを除外
+      if (exclude) {
+        query = query.neq('type', exclude)
+      }
+
+      const { count, error } = await query
 
       if (error) throw error
 
