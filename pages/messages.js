@@ -7,7 +7,9 @@ import styles from '../styles/Messages.module.css'
 
 export default function MessagesPage() {
   const [conversations, setConversations] = useState([])
+  const [archivedConversations, setArchivedConversations] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showArchived, setShowArchived] = useState(false)
   const router = useRouter()
   const { data: session, status } = useSession()
 
@@ -74,8 +76,9 @@ export default function MessagesPage() {
         return
       }
 
-      // Get the latest message for each chat room and filter rooms with messages
-      const conversationsData = []
+      // 🆕 アクティブとアーカイブを分ける
+      const activeConversationsData = []
+      const archivedConversationsData = []
       
       for (const room of chatRooms) {
         const { data: messages } = await supabase
@@ -146,7 +149,7 @@ export default function MessagesPage() {
           }
         }
 
-        conversationsData.push({
+        const conversationData = {
           roomId: room.id,
           userId: partnerEmail,
           companyName: partnerName || partnerEmail,
@@ -155,11 +158,21 @@ export default function MessagesPage() {
           lastMessageTime: latestMessage.created_at,
           unreadCount: unreadCount || 0,
           status: statusValue
-        })
+        }
+
+        // 🆕 アーカイブ済みかどうかで分ける
+        if (room.is_archived) {
+          archivedConversationsData.push(conversationData)
+        } else {
+          activeConversationsData.push(conversationData)
+        }
       }
 
-      console.log('Conversations with messages:', conversationsData)
-      setConversations(conversationsData)
+      console.log('Active conversations:', activeConversationsData)
+      console.log('Archived conversations:', archivedConversationsData)
+      
+      setConversations(activeConversationsData)
+      setArchivedConversations(archivedConversationsData)
     } catch (error) {
       console.error('Error fetching conversations:', error)
     } finally {
@@ -182,25 +195,88 @@ export default function MessagesPage() {
   return (
     <div className={styles.container}>
       <div className={styles.content}>
-        <h1 className={styles.title}>メッセージ</h1>
+        <div className={styles.header}>
+          <h1 className={styles.title}>メッセージ</h1>
+          {/* 🆕 アーカイブ切り替えボタン */}
+          {archivedConversations.length > 0 && (
+            <button 
+              onClick={() => setShowArchived(!showArchived)}
+              className={styles.archiveToggle}
+            >
+              {showArchived ? '📬 アクティブを表示' : `📦 アーカイブを表示 (${archivedConversations.length})`}
+            </button>
+          )}
+        </div>
 
-        {conversations.length === 0 ? (
-          <div className={styles.emptyState}>
-            <p>メッセージはありません</p>
-          </div>
+        {!showArchived ? (
+          // アクティブなメッセージ
+          conversations.length === 0 ? (
+            <div className={styles.emptyState}>
+              <p>メッセージはありません</p>
+              {archivedConversations.length > 0 && (
+                <p className={styles.emptyHint}>
+                  {archivedConversations.length}件のアーカイブされたメッセージがあります
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className={styles.conversationList}>
+              {conversations.map((conv) => (
+                <Link
+                  key={conv.roomId}
+                  href={`/chat/${conv.roomId}`}
+                  className={styles.conversationItem}
+                >
+                  <div className={styles.conversationContent}>
+                    <div className={styles.conversationHeader}>
+                      <h3 className={styles.companyName}>{conv.companyName}</h3>
+                      <span className={`${styles.statusBadge} ${getStatusStyle(conv.status)}`}>
+                        {getStatusLabel(conv.status)}
+                      </span>
+                      {conv.unreadCount > 0 && (
+                        <span className={styles.unreadBadge}>
+                          {conv.unreadCount}
+                        </span>
+                      )}
+                    </div>
+                    {conv.jobTitle && (
+                      <p className={styles.jobTitle}>{conv.jobTitle}</p>
+                    )}
+                  </div>
+                  <div className={styles.conversationMeta}>
+                    <p className={styles.lastMessage}>{conv.lastMessage}</p>
+                    <span className={styles.timestamp}>
+                      {new Date(conv.lastMessageTime).toLocaleDateString('ja-JP', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )
         ) : (
+          // アーカイブされたメッセージ
           <div className={styles.conversationList}>
-            {conversations.map((conv) => (
+            <div className={styles.archivedHeader}>
+              <p className={styles.archivedNote}>
+                📦 完了した案件のメッセージ（アーカイブ）
+              </p>
+            </div>
+            {archivedConversations.map((conv) => (
               <Link
                 key={conv.roomId}
                 href={`/chat/${conv.roomId}`}
-                className={styles.conversationItem}
+                className={`${styles.conversationItem} ${styles.archivedItem}`}
               >
                 <div className={styles.conversationContent}>
                   <div className={styles.conversationHeader}>
                     <h3 className={styles.companyName}>{conv.companyName}</h3>
-                    <span className={`${styles.statusBadge} ${getStatusStyle(conv.status)}`}>
-                      {getStatusLabel(conv.status)}
+                    <span className={styles.statusBadge} style={{backgroundColor: '#6B7280', color: 'white'}}>
+                      完了
                     </span>
                     {conv.unreadCount > 0 && (
                       <span className={styles.unreadBadge}>

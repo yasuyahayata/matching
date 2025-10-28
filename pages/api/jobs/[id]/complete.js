@@ -58,9 +58,26 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'ステータスの更新に失敗しました' })
     }
 
+    // 🆕 この案件に関連するチャットルームをアーカイブ
+    const { data: archivedRooms, error: archiveError } = await supabase
+      .from('chat_rooms')
+      .update({ 
+        is_archived: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('job_id', id)
+
+    if (archiveError) {
+      console.error('チャットルームアーカイブエラー:', archiveError)
+      // エラーが発生してもメイン処理は成功とする
+    } else {
+      console.log(`案件 ${id} に関連する ${archivedRooms?.length || 0} 件のチャットルームをアーカイブしました`)
+    }
+
     return res.status(200).json({ 
       success: true, 
-      job: updatedJob
+      job: updatedJob,
+      archivedRoomsCount: archivedRooms?.length || 0
     })
 
   } catch (error) {
