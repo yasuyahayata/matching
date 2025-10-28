@@ -119,9 +119,11 @@ const tagCategories = {
 
   async function fetchJobs() {
     try {
+      // 🆕 完了した案件を除外
       const { data, error } = await supabase
         .from('jobs')
         .select('*')
+        .neq('status', '完了')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

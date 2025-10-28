@@ -133,6 +133,9 @@ export default function Profile() {
   const [postedJobs, setPostedJobs] = useState([])
   const [myApplications, setMyApplications] = useState([])
   const [unreadApplicationNotifications, setUnreadApplicationNotifications] = useState(0)
+  const [jobApplications, setJobApplications] = useState({})
+  const [expandedJobId, setExpandedJobId] = useState(null)
+  const [processingApplicationId, setProcessingApplicationId] = useState(null)
   const [stats, setStats] = useState({
     totalJobs: 0,
     activeJobs: 0,
@@ -155,7 +158,82 @@ export default function Profile() {
     }
   }, [session, email])
 
-  // 🆕 自分の応募を取得
+  // 投稿案件が読み込まれたら応募も取得
+  useEffect(() => {
+    if (isOwnProfile && postedJobs.length > 0) {
+      loadAllApplications()
+    }
+  }, [postedJobs, isOwnProfile])
+
+  // 「応募した案件」タブを開いたときに自動既読
+  useEffect(() => {
+    if (activeTab === 'my-applications' && isOwnProfile) {
+      markApplicationNotificationsAsRead()
+    }
+  }, [activeTab, isOwnProfile])
+
+  // 案件ごとの応募を取得
+  const loadApplicationsForJob = async (jobId) => {
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/applications`)
+      if (!res.ok) throw new Error('応募の取得に失敗しました')
+      
+      const data = await res.json()
+      setJobApplications(prev => ({
+        ...prev,
+        [jobId]: data
+      }))
+    } catch (error) {
+      console.error('応募取得エラー:', error)
+    }
+  }
+
+  // すべての投稿案件の応募を取得
+  const loadAllApplications = async () => {
+    for (const job of postedJobs) {
+      await loadApplicationsForJob(job.id)
+    }
+  }
+
+  // 応募のステータス更新（承認・却下）
+  const handleApplicationStatusUpdate = async (applicationId, newStatus, jobId) => {
+    const confirmMessage = newStatus === 'approved' 
+      ? 'この応募を承認しますか？チャットルームが作成されます。' 
+      : 'この応募を却下しますか？'
+    
+    if (!confirm(confirmMessage)) return
+
+    try {
+      setProcessingApplicationId(applicationId)
+      
+      const res = await fetch(`/api/applications/${applicationId}/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'ステータスの更新に失敗しました')
+      }
+
+      alert(newStatus === 'approved' ? '応募を承認しました！' : '応募を却下しました')
+      
+      // 応募リストを再読み込み
+      await loadApplicationsForJob(jobId)
+      
+    } catch (err) {
+      console.error('ステータス更新エラー:', err)
+      alert(err.message)
+    } finally {
+      setProcessingApplicationId(null)
+    }
+  }
+
+  // 自分の応募を取得
   const loadMyApplications = async () => {
     try {
       const res = await fetch('/api/applications/my-applications')
@@ -170,7 +248,7 @@ export default function Profile() {
     }
   }
 
-  // 🆕 未読の応募通知を取得
+  // 未読の応募通知を取得
   const loadUnreadApplicationNotifications = async () => {
     try {
       const res = await fetch('/api/notifications')
@@ -186,6 +264,39 @@ export default function Profile() {
       setUnreadApplicationNotifications(unreadCount)
     } catch (error) {
       console.error('通知取得エラー:', error)
+    }
+  }
+
+  // 応募通知を既読にする
+  const markApplicationNotificationsAsRead = async () => {
+    try {
+      // application_approved の通知を既読にする
+      await fetch('/api/notifications/mark-as-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          type: 'application_approved'
+        })
+      })
+      
+      // application_rejected の通知を既読にする
+      await fetch('/api/notifications/mark-as-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          type: 'application_rejected'
+        })
+      })
+      
+      console.log('応募通知を既読にしました')
+      
+      // 未読数を再取得
+      await loadUnreadApplicationNotifications()
+      
+      // ナビゲーションバーの未読数を更新
+      window.dispatchEvent(new Event('messagesRead'))
+    } catch (error) {
+      console.error('通知既読エラー:', error)
     }
   }
 
@@ -418,17 +529,7 @@ export default function Profile() {
     }
   }
 
-  const formatBudget = (budget) => {
-    if (!budget) return '予算相談'
-    return `¥${budget.toLocaleString()}`
-  }
-
-  const formatDate = (date) => {
-    if (!date) return '期限なし'
-    return new Date(date).toLocaleDateString('ja-JP')
-  }
-
-  // 🆕 ステータスバッジ取得
+  // ステータスバッジ取得
   const getStatusBadge = (status) => {
     const config = {
       pending: { label: '審査中', className: 'bg-yellow-100 text-yellow-800' },
@@ -512,13 +613,9 @@ export default function Profile() {
             >
               📝 投稿した案件
             </button>
-            {/* 🆕 応募した案件タブ（自分のプロフィールの場合のみ） */}
             {isOwnProfile && (
               <button
-                onClick={() => {
-                  setActiveTab('my-applications')
-                  loadUnreadApplicationNotifications()
-                }}
+                onClick={() => setActiveTab('my-applications')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors relative ${
                   activeTab === 'my-applications'
                     ? 'border-blue-500 text-blue-600'
@@ -654,60 +751,150 @@ export default function Profile() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {postedJobs.map((job) => (
-                    <div key={job.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h4 className="text-lg font-semibold text-gray-800">{job.title}</h4>
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                              job.status === '募集中' ? 'bg-green-100 text-green-800' :
-                              job.status === '進行中' ? 'bg-blue-100 text-blue-800' :
-                              job.status === '完了' ? 'bg-gray-100 text-gray-800' :
-                              'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {job.status || '募集中'}
-                            </span>
-                          </div>
-                          <p className="text-gray-600 mb-3 line-clamp-2">{job.description}</p>
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                            <span>💰 {formatBudget(job.budget)}</span>
-                            <span>📅 {formatDate(job.deadline)}</span>
-                            <span>📂 {job.category}</span>
-                          </div>
-                          {job.skills && job.skills.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-3">
-                              {job.skills.slice(0, 5).map((skill, index) => (
-                                <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                                  {skill}
-                                </span>
-                              ))}
-                              {job.skills.length > 5 && (
-                                <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                                  +{job.skills.length - 5}
+                  {postedJobs.map((job) => {
+                    const applications = jobApplications[job.id] || []
+                    const pendingCount = applications.filter(app => app.status === 'pending').length
+                    const isExpanded = expandedJobId === job.id
+                    
+                    return (
+                      <div key={job.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+                        {/* 案件ヘッダー */}
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h4 className="text-lg font-semibold text-gray-800">{job.title}</h4>
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                job.status === '募集中' ? 'bg-green-100 text-green-800' :
+                                job.status === '進行中' ? 'bg-blue-100 text-blue-800' :
+                                job.status === '完了' ? 'bg-gray-100 text-gray-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {job.status || '募集中'}
+                              </span>
+                              {/* 応募通知バッジ */}
+                              {isOwnProfile && pendingCount > 0 && (
+                                <span className="px-3 py-1 bg-red-500 text-white rounded-full text-sm font-bold">
+                                  新着応募 {pendingCount}件
                                 </span>
                               )}
                             </div>
+                            <p className="text-gray-600 mb-3 line-clamp-2">{job.description}</p>
+                            {/* 🗑️ 予算・期限・カテゴリーの行を削除 */}
+                            {job.skills && job.skills.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-3">
+                                {job.skills.slice(0, 5).map((skill, index) => (
+                                  <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                                    {skill}
+                                  </span>
+                                ))}
+                                {job.skills.length > 5 && (
+                                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                                    +{job.skills.length - 5}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 応募者リスト（展開時） */}
+                        {isOwnProfile && isExpanded && applications.length > 0 && (
+                          <div className="mt-4 border-t pt-4">
+                            <h5 className="text-md font-semibold text-gray-700 mb-3">
+                              応募者一覧 ({applications.length}件)
+                            </h5>
+                            <div className="space-y-3">
+                              {applications.map((app) => {
+                                const statusConfig = getStatusBadge(app.status)
+                                
+                                return (
+                                  <div key={app.id} className="bg-gray-50 p-4 rounded-lg">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="font-semibold text-gray-800">
+                                            {app.freelancer_name}
+                                          </span>
+                                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusConfig.className}`}>
+                                            {statusConfig.label}
+                                          </span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mb-2">{app.freelancer_email}</p>
+                                        <div className="bg-white p-3 rounded border border-gray-200">
+                                          <p className="text-xs text-gray-500 mb-1">応募メッセージ:</p>
+                                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                            {app.message}
+                                          </p>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-2">
+                                          応募日時: {new Date(app.created_at).toLocaleString('ja-JP')}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* 承認・却下ボタン */}
+                                    {app.status === 'pending' && (
+                                      <div className="flex gap-2 mt-3">
+                                        <button
+                                          onClick={() => handleApplicationStatusUpdate(app.id, 'approved', job.id)}
+                                          disabled={processingApplicationId === app.id}
+                                          className="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all text-sm font-medium disabled:opacity-50"
+                                        >
+                                          {processingApplicationId === app.id ? '処理中...' : '✓ 承認'}
+                                        </button>
+                                        <button
+                                          onClick={() => handleApplicationStatusUpdate(app.id, 'rejected', job.id)}
+                                          disabled={processingApplicationId === app.id}
+                                          className="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all text-sm font-medium disabled:opacity-50"
+                                        >
+                                          {processingApplicationId === app.id ? '処理中...' : '✗ 却下'}
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    {/* 承認後のチャットボタン */}
+                                    {app.status === 'approved' && app.chat_room_id && (
+                                      <Link
+                                        href={`/chat/${app.chat_room_id}`}
+                                        className="block mt-3 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all text-sm font-medium text-center"
+                                      >
+                                        💬 チャットを開く
+                                      </Link>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ボタン群 */}
+                        <div className="flex space-x-3 mt-4">
+                          <Link
+                            href={`/job/${job.id}`}
+                            className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all text-sm"
+                          >
+                            詳細を見る
+                          </Link>
+                          {/* 応募者表示トグルボタン */}
+                          {isOwnProfile && applications.length > 0 && (
+                            <button
+                              onClick={() => setExpandedJobId(isExpanded ? null : job.id)}
+                              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-all text-sm"
+                            >
+                              {isExpanded ? '▲ 応募者を隠す' : `▼ 応募者を表示 (${applications.length}件)`}
+                            </button>
                           )}
                         </div>
                       </div>
-
-                      <div className="flex space-x-3">
-                        <Link
-                          href={`/job/${job.id}`}
-                          className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all text-sm"
-                        >
-                          詳細を見る
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
           )}
 
-          {/* 🆕 応募した案件タブ */}
+          {/* 応募した案件タブ */}
           {activeTab === 'my-applications' && isOwnProfile && (
             <div>
               <div className="flex justify-between items-center mb-6">
@@ -737,7 +924,7 @@ export default function Profile() {
                 <div className="space-y-4">
                   {myApplications.map((app) => {
                     const statusConfig = getStatusBadge(app.status)
-                    const hasUnreadNotification = app.status !== 'pending' // 承認・却下されたら未読扱い（簡易実装）
+                    const hasUnreadNotification = app.status !== 'pending'
                     
                     return (
                       <div 

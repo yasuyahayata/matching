@@ -112,6 +112,7 @@ export default function PostJob() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    deadline: '', // 🆕 期限を追加
     tags: []
   })
   
@@ -213,6 +214,7 @@ export default function PostJob() {
             title: formData.title,
             category: category,
             description: formData.description,
+            deadline: formData.deadline || null, // 🆕 期限を保存
             skills: formData.tags,
             client_email: session.user.email,
             client_name: session.user.name || session.user.email,
@@ -235,6 +237,9 @@ export default function PostJob() {
     }
   }
 
+  // 🆕 今日の日付を取得（最小値として使用）
+  const today = new Date().toISOString().split('T')[0]
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="bg-white rounded-2xl shadow-xl p-8">
@@ -255,6 +260,24 @@ export default function PostJob() {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="例：Webサイトのデザインをお願いします"
             />
+          </div>
+
+          {/* 🆕 募集期限 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              募集期限
+            </label>
+            <input
+              type="date"
+              name="deadline"
+              value={formData.deadline}
+              onChange={handleInputChange}
+              min={today}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              ※ 期限を設定しない場合は空欄のままにしてください
+            </p>
           </div>
 
           {/* タグ選択（3階層システム） */}

@@ -17,8 +17,34 @@ export default function ApplicationsPage() {
   useEffect(() => {
     if (id && session) {
       fetchJobAndApplications();
+      markNotificationsAsRead(); // 通知を既読にする
     }
   }, [id, session]);
+
+  // 通知を既読にする関数
+  const markNotificationsAsRead = async () => {
+    if (!id) return;
+
+    try {
+      await fetch('/api/notifications/mark-as-read', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'new_application',
+          jobId: id
+        }),
+      });
+      
+      console.log('応募通知を既読にしました');
+      
+      // 既読イベントを発火して、ナビゲーションバーの未読数を更新
+      window.dispatchEvent(new Event('messagesRead'));
+    } catch (error) {
+      console.error('通知の既読処理エラー:', error);
+    }
+  };
 
   const fetchJobAndApplications = async () => {
     try {

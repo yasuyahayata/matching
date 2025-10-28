@@ -11,6 +11,7 @@ export default function JobDetail() {
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [clientProfile, setClientProfile] = useState(null)
+  const [completing, setCompleting] = useState(false) // 🆕 完了処理中
   
   // 💬 新機能: メッセージ一覧
   const [chatRooms, setChatRooms] = useState([])
@@ -124,8 +125,55 @@ export default function JobDetail() {
     }
   }
 
+  // 🆕 案件を完了にする
+  const handleComplete = async () => {
+    if (!confirm('この案件を完了にしますか？\n完了後は案件一覧に表示されなくなります。')) {
+      return
+    }
+
+    try {
+      setCompleting(true)
+
+      const res = await fetch(`/api/jobs/${id}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || '完了処理に失敗しました')
+      }
+
+      alert('案件を完了にしました！')
+      router.push('/profile') // プロフィールページに遷移
+    } catch (error) {
+      console.error('完了処理エラー:', error)
+      alert('完了処理に失敗しました: ' + error.message)
+    } finally {
+      setCompleting(false)
+    }
+  }
+
+  // 🆕 期限が過ぎているかチェック
+  const isExpired = () => {
+    if (!job?.deadline) return false
+    return new Date(job.deadline) < new Date()
+  }
+
   const formatCreatedAt = (date) => {
     if (!date) return ''
+    return new Date(date).toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+
+  // 🆕 期限のフォーマット
+  const formatDeadline = (date) => {
+    if (!date) return null
     return new Date(date).toLocaleDateString('ja-JP', {
       year: 'numeric',
       month: 'long',
@@ -150,6 +198,12 @@ export default function JobDetail() {
       return
     }
 
+    // 🆕 期限チェック
+    if (isExpired()) {
+      alert('この案件の募集期限は終了しました')
+      return
+    }
+
     // 🆕 既に応募済みの場合
     if (hasApplied) {
       alert('この案件には既に応募済みです')
@@ -170,6 +224,13 @@ export default function JobDetail() {
     // 🆕 二重応募チェック
     if (hasApplied) {
       alert('この案件には既に応募済みです')
+      setShowApplyModal(false)
+      return
+    }
+
+    // 🆕 期限チェック
+    if (isExpired()) {
+      alert('この案件の募集期限は終了しました')
       setShowApplyModal(false)
       return
     }
@@ -292,6 +353,15 @@ export default function JobDetail() {
       }
     }
 
+    // 🆕 期限切れチェック
+    if (isExpired()) {
+      return {
+        text: '⏰ 募集期限が終了しました',
+        disabled: true,
+        className: 'flex-1 bg-gray-400 text-white py-4 px-8 rounded-lg font-semibold text-lg cursor-not-allowed'
+      }
+    }
+
     if (hasApplied) {
       const statusText = {
         'pending': '✓ 応募済み（審査中）',
@@ -338,6 +408,7 @@ export default function JobDetail() {
 
   const isOwnJob = session?.user?.email === job.client_email
   const applyButtonConfig = getApplyButtonConfig()
+  const expired = isExpired()
 
   return (
     <>
@@ -346,19 +417,37 @@ export default function JobDetail() {
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
           {/* ステータスバッジ */}
           <div className="flex items-center justify-between mb-4">
-            <span className={`px-4 py-2 rounded-full text-sm font-medium ${
-              job.status === '募集中' ? 'bg-green-100 text-green-800' :
-              job.status === '進行中' ? 'bg-blue-100 text-blue-800' :
-              job.status === '完了' ? 'bg-gray-100 text-gray-800' :
-              'bg-yellow-100 text-yellow-800'
-            }`}>
-              {job.status || '募集中'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+                job.status === '募集中' ? 'bg-green-100 text-green-800' :
+                job.status === '進行中' ? 'bg-blue-100 text-blue-800' :
+                job.status === '完了' ? 'bg-gray-100 text-gray-800' :
+                'bg-yellow-100 text-yellow-800'
+              }`}>
+                {job.status || '募集中'}
+              </span>
+              {/* 🆕 期限切れバッジ */}
+              {expired && (
+                <span className="px-4 py-2 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                  ⏰ 募集終了
+                </span>
+              )}
+            </div>
             <span className="text-sm text-gray-500">投稿日: {formatCreatedAt(job.created_at)}</span>
           </div>
 
           {/* タイトル */}
           <h1 className="text-3xl font-bold text-gray-800 mb-4">{job.title}</h1>
+
+          {/* 🆕 募集期限 */}
+          {job.deadline && (
+            <div className="mb-4">
+              <span className={`text-sm font-medium ${expired ? 'text-red-600' : 'text-gray-700'}`}>
+                📅 募集期限: {formatDeadline(job.deadline)}
+                {expired && ' (終了)'}
+              </span>
+            </div>
+          )}
 
           {/* カテゴリ */}
           <div className="flex flex-wrap items-center gap-4 mb-6">
@@ -411,16 +500,28 @@ export default function JobDetail() {
           )}
 
           {isOwnJob && (
-            <div className="pt-6 border-t border-gray-200">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="pt-6 border-t border-gray-200 space-y-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-blue-800 font-medium">これはあなたが投稿した案件です</p>
               </div>
-              <Link 
-                href={`/job/${job.id}/applications`}
-                className="block w-full bg-gradient-to-r from-green-600 to-teal-600 text-white py-4 px-8 rounded-lg hover:from-green-700 hover:to-teal-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg text-center"
-              >
-                📋 応募者一覧を見る
-              </Link>
+              <div className="flex gap-3">
+                <Link 
+                  href={`/job/${job.id}/applications`}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 text-white py-4 px-8 rounded-lg hover:from-green-700 hover:to-teal-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg text-center"
+                >
+                  📋 応募者一覧を見る
+                </Link>
+                {/* 🆕 完了ボタン */}
+                {job.status !== '完了' && (
+                  <button
+                    onClick={handleComplete}
+                    disabled={completing}
+                    className="flex-1 bg-gradient-to-r from-gray-600 to-gray-700 text-white py-4 px-8 rounded-lg hover:from-gray-700 hover:to-gray-800 transition-all shadow-lg hover:shadow-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {completing ? '処理中...' : '✓ 完了にする'}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -611,6 +712,11 @@ export default function JobDetail() {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="font-semibold text-gray-800 mb-2">{job.title}</h3>
                   <p className="text-sm text-gray-600">カテゴリ: {job.category}</p>
+                  {job.deadline && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      募集期限: {formatDeadline(job.deadline)}
+                    </p>
+                  )}
                 </div>
 
                 <div>
