@@ -649,7 +649,7 @@ export default function JobDetail() {
             
             <div className="flex-1">
               <Link 
-                href={`/profile?user=${job.client_name}`}
+                href={`/profile?email=${job.client_email}`}
                 className="text-xl font-bold text-gray-900 mb-2 hover:text-blue-600 transition-colors cursor-pointer inline-flex items-center gap-2"
               >
                 {clientProfile?.full_name || job.client_name || 'クライアント'}
