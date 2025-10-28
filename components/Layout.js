@@ -8,7 +8,6 @@ export default function Layout({ children }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 
   const fetchUnreadChatCount = async () => {
     if (status === 'loading') return;
@@ -34,34 +33,8 @@ export default function Layout({ children }) {
     }
   };
 
-  const fetchUnreadNotificationCount = async () => {
-    if (status === 'loading') return;
-    
-    if (!session) {
-      setUnreadNotificationCount(0);
-      return;
-    }
-
-    try {
-      // 🆕 new_application を除外した未読通知を取得
-      const res = await fetch('/api/notifications/unread-count?exclude=new_application');
-      if (res.ok) {
-        const data = await res.json();
-        const count = Number(data.count) || 0;
-        console.log('未読通知数（応募通知を除く）:', count);
-        setUnreadNotificationCount(count);
-      } else {
-        setUnreadNotificationCount(0);
-      }
-    } catch (error) {
-      console.error('Error fetching unread notification count:', error);
-      setUnreadNotificationCount(0);
-    }
-  };
-
   const fetchAllUnreadCounts = () => {
     fetchUnreadChatCount();
-    fetchUnreadNotificationCount();
   };
 
   // 初回読み込み
@@ -121,8 +94,8 @@ export default function Layout({ children }) {
     };
   }, [session]);
 
-  // チャットとマッチング通知の合計未読数
-  const totalUnreadCount = unreadChatCount + unreadNotificationCount;
+  // 🆕 チャットの未読数のみ表示（通知は含めない）
+  const totalUnreadCount = unreadChatCount;
 
   return (
     <div className={styles.container}>
