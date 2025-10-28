@@ -16,16 +16,13 @@ export default function JobDetail() {
   const [completing, setCompleting] = useState(false)
   const [deleting, setDeleting] = useState(false)
   
-  // 💬 新機能: メッセージ一覧
   const [chatRooms, setChatRooms] = useState([])
   const [loadingChats, setLoadingChats] = useState(false)
 
-  // 🆕 応募状態の管理
   const [hasApplied, setHasApplied] = useState(false)
   const [applicationStatus, setApplicationStatus] = useState(null)
   const [checkingApplication, setCheckingApplication] = useState(false)
 
-  // 応募フォームの状態管理
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [applyForm, setApplyForm] = useState({
     message: ''
@@ -38,7 +35,6 @@ export default function JobDetail() {
     }
   }, [id, session])
 
-  // 🆕 応募状態をチェック
   useEffect(() => {
     if (id && session && !checkingApplication) {
       checkApplicationStatus()
@@ -78,7 +74,6 @@ export default function JobDetail() {
         setClientProfile(profileData)
       }
 
-      // 💬 投稿主の場合、チャットルーム一覧を取得
       if (session?.user?.email === jobData?.client_email) {
         loadChatRooms(jobId)
       }
@@ -91,7 +86,6 @@ export default function JobDetail() {
     }
   }
 
-  // 🆕 応募状態をチェック
   const checkApplicationStatus = async () => {
     try {
       setCheckingApplication(true)
@@ -109,7 +103,6 @@ export default function JobDetail() {
     }
   }
 
-  // 💬 新機能: チャットルーム一覧を取得
   const loadChatRooms = async (jobId) => {
     try {
       setLoadingChats(true)
@@ -128,7 +121,6 @@ export default function JobDetail() {
     }
   }
 
-  // 🆕 案件を完了にする
   const handleComplete = async () => {
     try {
       setCompleting(true)
@@ -157,7 +149,6 @@ export default function JobDetail() {
     }
   }
 
-  // 🆕 案件を削除（修正版）
   const handleDelete = async () => {
     try {
       setDeleting(true)
@@ -179,7 +170,6 @@ export default function JobDetail() {
 
       showToast('案件を削除しました', 'success')
       
-      // 🆕 少し待ってからリダイレクト（Supabaseの変更が反映されるまで）
       setTimeout(() => {
         router.push('/')
       }, 1500)
@@ -191,7 +181,6 @@ export default function JobDetail() {
     }
   }
 
-  // 🆕 期限が過ぎているかチェック
   const isExpired = () => {
     if (!job?.deadline) return false
     return new Date(job.deadline) < new Date()
@@ -206,7 +195,6 @@ export default function JobDetail() {
     })
   }
 
-  // 🆕 期限のフォーマット
   const formatDeadline = (date) => {
     if (!date) return null
     return new Date(date).toLocaleDateString('ja-JP', {
@@ -233,13 +221,11 @@ export default function JobDetail() {
       return
     }
 
-    // 🆕 期限チェック
     if (isExpired()) {
       showToast('この案件の募集期限は終了しました', 'error')
       return
     }
 
-    // 🆕 既に応募済みの場合
     if (hasApplied) {
       showToast('この案件には既に応募済みです', 'info')
       return
@@ -256,14 +242,12 @@ export default function JobDetail() {
       return
     }
 
-    // 🆕 二重応募チェック
     if (hasApplied) {
       showToast('この案件には既に応募済みです', 'info')
       setShowApplyModal(false)
       return
     }
 
-    // 🆕 期限チェック
     if (isExpired()) {
       showToast('この案件の募集期限は終了しました', 'error')
       setShowApplyModal(false)
@@ -285,7 +269,6 @@ export default function JobDetail() {
         .select()
 
       if (error) {
-        // 🆕 ユニーク制約エラーの場合
         if (error.code === '23505') {
           showToast('この案件には既に応募済みです', 'info')
           setHasApplied(true)
@@ -295,7 +278,6 @@ export default function JobDetail() {
         throw error
       }
 
-      // 🆕 投稿者に通知を送信
       try {
         await fetch('/api/notifications/create', {
           method: 'POST',
@@ -315,14 +297,12 @@ export default function JobDetail() {
         })
       } catch (notifError) {
         console.error('通知送信エラー:', notifError)
-        // 通知エラーでも応募は成功とする
       }
 
       showToast('応募が完了しました！', 'success')
       setShowApplyModal(false)
       setApplyForm({ message: '' })
       
-      // 🆕 応募状態を更新
       setHasApplied(true)
       setApplicationStatus('pending')
       
@@ -334,7 +314,6 @@ export default function JobDetail() {
     }
   }
 
-  // 💬 新機能: チャット開始
   const handleStartChat = async () => {
     if (!session) {
       showToast('チャットするにはログインが必要です', 'info')
@@ -343,7 +322,6 @@ export default function JobDetail() {
     }
 
     try {
-      // チャットルームを作成または取得
       const res = await fetch('/api/chat-rooms', {
         method: 'POST',
         headers: {
@@ -362,7 +340,6 @@ export default function JobDetail() {
 
       const chatRoom = await res.json()
       
-      // チャットページに遷移
       router.push(`/chat/${chatRoom.id}`)
     } catch (error) {
       console.error('チャット開始エラー:', error)
@@ -370,7 +347,6 @@ export default function JobDetail() {
     }
   }
 
-  // 💬 新機能: 相手のユーザー情報を取得
   const getOtherUser = (room) => {
     if (room.user1_email === session?.user?.email) {
       return { email: room.user2_email, name: room.user2_name }
@@ -378,17 +354,15 @@ export default function JobDetail() {
     return { email: room.user1_email, name: room.user1_name }
   }
 
-  // 🆕 応募ボタンのテキストとスタイルを取得
   const getApplyButtonConfig = () => {
     if (!session) {
       return {
         text: '📝 この案件に応募する',
         disabled: false,
-        className: 'flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-8 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg'
+        className: 'flex-1 bg-blue-600 text-white py-4 px-8 rounded-lg hover:bg-blue-700 transition-all font-semibold text-lg'
       }
     }
 
-    // 🆕 期限切れチェック
     if (isExpired()) {
       return {
         text: '⏰ 募集期限が終了しました',
@@ -414,16 +388,16 @@ export default function JobDetail() {
     return {
       text: '📝 この案件に応募する',
       disabled: false,
-      className: 'flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-8 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg'
+      className: 'flex-1 bg-blue-600 text-white py-4 px-8 rounded-lg hover:bg-blue-700 transition-all font-semibold text-lg'
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600">読み込み中...</p>
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent"></div>
+          <p className="mt-4 text-gray-600 font-medium">読み込み中...</p>
         </div>
       </div>
     )
@@ -431,11 +405,13 @@ export default function JobDetail() {
 
   if (!job) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center bg-white p-12 rounded-xl shadow-lg max-w-md border border-gray-200">
           <h1 className="text-2xl font-bold text-gray-800 mb-4">案件が見つかりませんでした</h1>
-          <p className="text-gray-600 mb-4">案件ID: {id}</p>
-          <Link href="/" className="text-blue-600 hover:underline">トップページに戻る</Link>
+          <p className="text-gray-600 mb-6">案件ID: {id}</p>
+          <Link href="/" className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+            トップページに戻る
+          </Link>
         </div>
       </div>
     )
@@ -446,14 +422,14 @@ export default function JobDetail() {
   const expired = isExpired()
 
   return (
-    <>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
         {/* メイン情報 */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 mb-8">
           {/* ステータスバッジ */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className={`px-4 py-2 rounded-full text-sm font-medium ${
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <span className={`px-5 py-2 rounded-lg text-sm font-bold ${
                 job.status === '募集中' ? 'bg-green-100 text-green-800' :
                 job.status === '進行中' ? 'bg-blue-100 text-blue-800' :
                 job.status === '完了' ? 'bg-gray-100 text-gray-800' :
@@ -461,23 +437,22 @@ export default function JobDetail() {
               }`}>
                 {job.status || '募集中'}
               </span>
-              {/* 🆕 期限切れバッジ */}
               {expired && (
-                <span className="px-4 py-2 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                <span className="px-5 py-2 rounded-lg text-sm font-bold bg-red-100 text-red-800">
                   ⏰ 募集終了
                 </span>
               )}
             </div>
-            <span className="text-sm text-gray-500">投稿日: {formatCreatedAt(job.created_at)}</span>
+            <span className="text-sm text-gray-500 font-medium">投稿日: {formatCreatedAt(job.created_at)}</span>
           </div>
 
           {/* タイトル */}
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">{job.title}</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-6">{job.title}</h1>
 
-          {/* 🆕 募集期限 */}
+          {/* 募集期限 */}
           {job.deadline && (
-            <div className="mb-4">
-              <span className={`text-sm font-medium ${expired ? 'text-red-600' : 'text-gray-700'}`}>
+            <div className="mb-6">
+              <span className={`text-base font-semibold ${expired ? 'text-red-600' : 'text-gray-700'}`}>
                 📅 募集期限: {formatDeadline(job.deadline)}
                 {expired && ' (終了)'}
               </span>
@@ -485,27 +460,27 @@ export default function JobDetail() {
           )}
 
           {/* カテゴリ */}
-          <div className="flex flex-wrap items-center gap-4 mb-6">
-            <span className="px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 rounded-full text-sm font-medium">
+          <div className="flex flex-wrap items-center gap-3 mb-8">
+            <span className="px-5 py-2 bg-blue-100 text-blue-700 rounded-lg text-base font-semibold">
               📂 {job.category}
             </span>
           </div>
 
           {/* 説明 */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-3">案件詳細</h2>
-            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{job.description}</p>
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">案件詳細</h2>
+            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed text-base">{job.description}</p>
           </div>
 
           {/* タグ（スキル） */}
           {job.skills && job.skills.length > 0 && (
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-3">タグ</h2>
-              <div className="flex flex-wrap gap-2">
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">タグ</h2>
+              <div className="flex flex-wrap gap-3">
                 {job.skills.map((skill, index) => (
                   <span
                     key={index}
-                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full text-sm font-medium"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold"
                   >
                     {skill}
                   </span>
@@ -516,7 +491,7 @@ export default function JobDetail() {
 
           {/* アクションボタン */}
           {!isOwnJob && job.status === '募集中' && (
-            <div className="flex gap-4 pt-6 border-t border-gray-200">
+            <div className="flex gap-4 pt-8 border-t-2 border-gray-200">
               <button
                 onClick={handleApply}
                 disabled={applyButtonConfig.disabled}
@@ -526,7 +501,7 @@ export default function JobDetail() {
               </button>
               <button
                 onClick={handleStartChat}
-                className="px-8 py-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold text-2xl"
+                className="px-8 py-4 border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold text-3xl"
                 title="クライアントに質問する"
               >
                 💬
@@ -535,42 +510,40 @@ export default function JobDetail() {
           )}
 
 {isOwnJob && (
-  <div className="pt-6 border-t border-gray-200 space-y-3">
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-      <p className="text-blue-800 font-medium">これはあなたが投稿した案件です</p>
+  <div className="pt-8 border-t-2 border-gray-200 space-y-4">
+    <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-5">
+      <p className="text-blue-800 font-semibold text-base">これはあなたが投稿した案件です</p>
     </div>
     
-    {/* 🆕 編集・削除ボタン */}
-    <div className="flex gap-3">
+    <div className="flex gap-4">
       <Link 
         href={`/job/${job.id}/edit`}
-        className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-4 px-8 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl font-semibold text-lg text-center"
+        className="flex-1 bg-yellow-500 text-white py-4 px-8 rounded-lg hover:bg-yellow-600 transition-all font-semibold text-base text-center"
       >
         ✏️ 編集
       </Link>
       <button
         onClick={handleDelete}
         disabled={deleting}
-        className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white py-4 px-8 rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex-1 bg-red-600 text-white py-4 px-8 rounded-lg hover:bg-red-700 transition-all font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {deleting ? '削除中...' : '🗑️ 削除'}
       </button>
     </div>
 
-    <div className="flex gap-3">
+    <div className="flex gap-4">
       <Link 
         href={`/job/${job.id}/applications`}
-        className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 text-white py-4 px-8 rounded-lg hover:from-green-700 hover:to-teal-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg text-center whitespace-nowrap"
+        className="flex-1 bg-green-600 text-white py-4 px-8 rounded-lg hover:bg-green-700 transition-all font-semibold text-base text-center whitespace-nowrap"
       >
         📋 応募者
       </Link>
 
-                {/* 🆕 完了ボタン */}
                 {job.status !== '完了' && (
                   <button
                     onClick={handleComplete}
                     disabled={completing}
-                    className="flex-1 bg-gradient-to-r from-gray-600 to-gray-700 text-white py-4 px-8 rounded-lg hover:from-gray-700 hover:to-gray-800 transition-all shadow-lg hover:shadow-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-gray-600 text-white py-4 px-8 rounded-lg hover:bg-gray-700 transition-all font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {completing ? '処理中...' : '✓ 完了'}
                   </button>
@@ -580,14 +553,14 @@ export default function JobDetail() {
           )}
         </div>
 
-        {/* 💬 投稿主のみ: メッセージ一覧 */}
+        {/* 投稿主のみ: メッセージ一覧 */}
         {isOwnJob && (
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-gray-800 flex items-center gap-2">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 mb-8">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
                 💬 この案件へのメッセージ
                 {chatRooms.length > 0 && (
-                  <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
+                  <span className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg text-base font-semibold">
                     {chatRooms.length}件
                   </span>
                 )}
@@ -595,17 +568,17 @@ export default function JobDetail() {
             </div>
 
             {loadingChats ? (
-              <div className="text-center py-8">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent"></div>
-                <p className="mt-2 text-gray-600">読み込み中...</p>
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+                <p className="mt-3 text-gray-600">読み込み中...</p>
               </div>
             ) : chatRooms.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p className="text-lg mb-2">💬</p>
-                <p>まだメッセージはありません</p>
+              <div className="text-center py-12 text-gray-500">
+                <p className="text-2xl mb-2">💬</p>
+                <p className="text-base">まだメッセージはありません</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {chatRooms.map((room) => {
                   const otherUser = getOtherUser(room)
                   const unreadCount = room.unreadCount || 0
@@ -613,20 +586,20 @@ export default function JobDetail() {
                     <div
                       key={room.id}
                       onClick={() => router.push(`/chat/${room.id}`)}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group"
+                      className="flex items-center justify-between p-6 border-2 border-gray-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer group"
                     >
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                        <div className="flex items-center gap-4 mb-3">
+                          <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
                             {otherUser.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors text-lg">
                                 {otherUser.name}
                               </h3>
                               {unreadCount > 0 && (
-                                <span className="px-2 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full min-w-[24px] text-center">
+                                <span className="px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-lg min-w-[28px] text-center">
                                   {unreadCount > 99 ? '99+' : unreadCount}
                                 </span>
                               )}
@@ -635,7 +608,7 @@ export default function JobDetail() {
                           </div>
                         </div>
                         {room.latestMessage && (
-                          <div className="ml-13">
+                          <div className="ml-16">
                             <p className="text-gray-700 text-sm line-clamp-2">
                               {room.latestMessage.message}
                             </p>
@@ -648,7 +621,7 @@ export default function JobDetail() {
                             {formatMessageTime(room.latestMessage.created_at)}
                           </span>
                         )}
-                        <span className="text-blue-600 group-hover:text-blue-700 text-xl">
+                        <span className="text-blue-600 group-hover:text-blue-700 text-2xl">
                           →
                         </span>
                       </div>
@@ -661,13 +634,13 @@ export default function JobDetail() {
         )}
 
         {/* クライアント情報 */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">クライアント情報</h2>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">クライアント情報</h2>
           
-          <div className="flex items-start space-x-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+          <div className="flex items-start space-x-6">
+            <div className="w-20 h-20 bg-blue-600 rounded-xl flex items-center justify-center text-white text-3xl font-bold overflow-hidden flex-shrink-0">
               {clientProfile?.avatar_url ? (
-                <img src={clientProfile.avatar_url} alt={clientProfile.full_name} className="w-16 h-16 rounded-full object-cover" />
+                <img src={clientProfile.avatar_url} alt={clientProfile.full_name} className="w-20 h-20 object-cover" />
               ) : (
                 (job.client_name?.charAt(0) || 'C').toUpperCase()
               )}
@@ -676,23 +649,25 @@ export default function JobDetail() {
             <div className="flex-1">
               <Link 
                 href={`/profile?user=${job.client_name}`}
-                className="text-lg font-semibold text-gray-800 mb-1 hover:text-blue-600 transition-colors cursor-pointer inline-flex items-center gap-2"
+                className="text-xl font-bold text-gray-900 mb-2 hover:text-blue-600 transition-colors cursor-pointer inline-flex items-center gap-2"
               >
                 {clientProfile?.full_name || job.client_name || 'クライアント'}
                 <span className="text-blue-600">→</span>
               </Link>
               
               {clientProfile?.company_name && (
-                <p className="text-gray-600 mb-2">🏢 {clientProfile.company_name}</p>
+                <p className="text-gray-600 mb-3 text-base flex items-center">
+                  <span className="mr-2">🏢</span> {clientProfile.company_name}
+                </p>
               )}
               
               {clientProfile?.bio && (
-                <p className="text-gray-700 mb-3">{clientProfile.bio}</p>
+                <p className="text-gray-700 mb-4 leading-relaxed">{clientProfile.bio}</p>
               )}
               
               {clientProfile?.company_website && (
-                <div className="mb-3">
-                  <a href={clientProfile.company_website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                <div className="mb-4">
+                  <a href={clientProfile.company_website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 text-base font-medium">
                     🔗 {clientProfile.company_website}
                   </a>
                 </div>
@@ -700,18 +675,18 @@ export default function JobDetail() {
 
               {/* クライアントの強み表示 */}
               {clientProfile && (
-                <div className="space-y-3 mt-4">
+                <div className="space-y-4 mt-6">
                   {clientProfile.target_industries && clientProfile.target_industries.length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-600 mb-1">対象業種:</p>
-                      <div className="flex flex-wrap gap-1">
+                      <p className="text-sm text-gray-600 mb-2 font-semibold">対象業種:</p>
+                      <div className="flex flex-wrap gap-2">
                         {clientProfile.target_industries.slice(0, 3).map((industry, index) => (
-                          <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                          <span key={index} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
                             {industry}
                           </span>
                         ))}
                         {clientProfile.target_industries.length > 3 && (
-                          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                          <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
                             +{clientProfile.target_industries.length - 3}
                           </span>
                         )}
@@ -721,10 +696,10 @@ export default function JobDetail() {
 
                   {clientProfile.job_types && clientProfile.job_types.length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-600 mb-1">職種:</p>
-                      <div className="flex flex-wrap gap-1">
+                      <p className="text-sm text-gray-600 mb-2 font-semibold">職種:</p>
+                      <div className="flex flex-wrap gap-2">
                         {clientProfile.job_types.slice(0, 3).map((jobType, index) => (
-                          <span key={index} className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
+                          <span key={index} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium">
                             {jobType}
                           </span>
                         ))}
@@ -734,10 +709,10 @@ export default function JobDetail() {
 
                   {clientProfile.expertise_methods && clientProfile.expertise_methods.length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-600 mb-1">得意な施策:</p>
-                      <div className="flex flex-wrap gap-1">
+                      <p className="text-sm text-gray-600 mb-2 font-semibold">得意な施策:</p>
+                      <div className="flex flex-wrap gap-2">
                         {clientProfile.expertise_methods.slice(0, 3).map((method, index) => (
-                          <span key={index} className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+                          <span key={index} className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
                             {method}
                           </span>
                         ))}
@@ -754,21 +729,21 @@ export default function JobDetail() {
       {/* 応募モーダル */}
       {showApplyModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-8">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">案件に応募する</h2>
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-10">
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-3xl font-bold text-gray-900">案件に応募する</h2>
                 <button
                   onClick={() => setShowApplyModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-3xl leading-none"
+                  className="text-gray-400 hover:text-gray-600 text-4xl leading-none"
                 >
                   ×
                 </button>
               </div>
 
-              <form onSubmit={handleApplySubmit} className="space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-800 mb-2">{job.title}</h3>
+              <form onSubmit={handleApplySubmit} className="space-y-8">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                  <h3 className="font-bold text-gray-900 mb-3 text-lg">{job.title}</h3>
                   <p className="text-sm text-gray-600">カテゴリ: {job.category}</p>
                   {job.deadline && (
                     <p className="text-sm text-gray-600 mt-1">
@@ -778,31 +753,31 @@ export default function JobDetail() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-base font-bold text-gray-900 mb-3">
                     提案メッセージ・自己PR <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     required
-                    rows="8"
+                    rows="10"
                     value={applyForm.message}
                     onChange={(e) => setApplyForm({ ...applyForm, message: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-5 py-4 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base leading-relaxed"
                     placeholder="あなたの経験、スキル、この案件への提案内容を記入してください"
                   ></textarea>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex gap-4 pt-4">
                   <button
                     type="button"
                     onClick={() => setShowApplyModal(false)}
-                    className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                    className="flex-1 px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-base"
                   >
                     キャンセル
                   </button>
                   <button
                     type="submit"
                     disabled={applying}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-blue-600 text-white py-4 px-8 rounded-lg hover:bg-blue-700 transition-all font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {applying ? '送信中...' : '応募する'}
                   </button>
@@ -812,6 +787,6 @@ export default function JobDetail() {
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }
