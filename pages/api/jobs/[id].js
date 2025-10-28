@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -6,40 +8,162 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  // GETメソッドのみ許可
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  const { id } = req.query;
+
+  // 案件IDのバリデーション
+  if (!id || isNaN(parseInt(id))) {
+    return res.status(400).json({ error: '無効な案件IDです' });
   }
 
-  try {
-    const { id } = req.query; // 案件ID
+  const jobId = parseInt(id);
 
-    // 案件IDのバリデーション
-    if (!id || isNaN(parseInt(id))) {
-      return res.status(400).json({ error: '無効な案件IDです' });
+  // GETメソッド - 案件取得
+  if (req.method === 'GET') {
+    try {
+      const { data: job, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+
+      if (error) {
+        console.error('Supabase error:', error);
+        return res.status(404).json({ error: '案件が見つかりません' });
+      }
+
+      if (!job) {
+        return res.status(404).json({ error: '案件が見つかりません' });
+      }
+
+      return res.status(200).json(job);
+
+    } catch (error) {
+      console.error('API Error:', error);
+      return res.status(500).json({ error: 'サーバーエラーが発生しました' });
     }
-
-    // 案件データを取得
-    const { data: job, error } = await supabase
-      .from('jobs')
-      .select('*')
-      .eq('id', parseInt(id))
-      .single();
-
-    if (error) {
-      console.error('Supabase error:', error);
-      return res.status(404).json({ error: '案件が見つかりません' });
-    }
-
-    if (!job) {
-      return res.status(404).json({ error: '案件が見つかりません' });
-    }
-
-    // 案件データを返す
-    return res.status(200).json(job);
-
-  } catch (error) {
-    console.error('API Error:', error);
-    return res.status(500).json({ error: 'サーバーエラーが発生しました' });
   }
+
+  // PUTメソッド - 案件更新
+  if (req.method === 'PUT') {
+    try {
+      const session = await getServerSession(req, res, authOptions);
+
+      if (!session) {
+        return res.status(401).json({ error: '認証が必要です' });
+      }
+
+      // 既存の案件を取得
+      const { data: existingJob, error: fetchError } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+
+      if (fetchError || !existingJob) {
+        return res.status(404).json({ error: '案件が見つかりません' });
+      }
+
+      // 投稿者本人かチェック
+      if (existingJob.client_email !== session.user.email) {
+        return res.status(403).json({ error: 'この案件を編集する権限がありません' });
+      }
+
+      const { title, description, deadline, skills } = req.body;
+
+      // バリデーション
+      if (!title || !description) {
+        return res.status(400).json({ error: 'タイトルと詳細は必須です' });
+      }
+
+      // 案件を更新
+      const { data: updatedJob, error: updateError } = await supabase
+        .from('jobs')
+        .update({
+          title,
+          description,
+          deadline: deadline || null,
+          skills: skills || [],
+          category: skills && skills.length > 0 ? skills[0] : existingJob.category,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jobId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Update error:', updateError);
+        return res.status(500).json({ error: '案件の更新に失敗しました' });
+      }
+
+      return res.status(200).json(updatedJob);
+
+    } catch (error) {
+      console.error('API Error:', error);
+      return res.status(500).json({ error: 'サーバーエラーが発生しました' });
+    }
+  }
+
+  // DELETEメソッド - 案件削除
+  if (req.method === 'DELETE') {
+    try {
+      const session = await getServerSession(req, res, authOptions);
+
+      if (!session) {
+        return res.status(401).json({ error: '認証が必要です' });
+      }
+
+      // 既存の案件を取得
+      const { data: existingJob, error: fetchError } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+
+      if (fetchError || !existingJob) {
+        return res.status(404).json({ error: '案件が見つかりません' });
+      }
+
+      // 投稿者本人かチェック
+      if (existingJob.client_email !== session.user.email) {
+        return res.status(403).json({ error: 'この案件を削除する権限がありません' });
+      }
+
+      // 応募がある場合は削除できないようにする
+      const { data: applications, error: appError } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('job_id', jobId);
+
+      if (appError) {
+        console.error('Applications check error:', appError);
+      }
+
+      if (applications && applications.length > 0) {
+        return res.status(400).json({ 
+          error: 'この案件には応募があるため削除できません',
+          hasApplications: true
+        });
+      }
+
+      // 案件を削除
+      const { error: deleteError } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', jobId);
+
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
+        return res.status(500).json({ error: '案件の削除に失敗しました' });
+      }
+
+      return res.status(200).json({ message: '案件を削除しました' });
+
+    } catch (error) {
+      console.error('API Error:', error);
+      return res.status(500).json({ error: 'サーバーエラーが発生しました' });
+    }
+  }
+
+  // その他のメソッドは許可しない
+  return res.status(405).json({ error: 'Method not allowed' });
 }

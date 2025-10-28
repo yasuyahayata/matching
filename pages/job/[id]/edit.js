@@ -1,9 +1,9 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
-import { useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { useToast } from '../components/ToastManager'
+import { useState, useEffect } from 'react'
+import { supabase } from '../../../lib/supabase'
+import { useToast } from '../../../components/ToastManager'
 
 // タグカテゴリーの定義
 const tagCategories = {
@@ -106,11 +106,14 @@ const skillDetails = {
   ]
 };
 
-export default function PostJob() {
-  const { data: session } = useSession()
+export default function EditJob() {
+  const { data: session, status } = useSession()
   const router = useRouter()
+  const { id } = router.query
   const { showToast } = useToast()
-  const [loading, setLoading] = useState(false)
+  
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -121,16 +124,48 @@ export default function PostJob() {
   const [selectedMainCategory, setSelectedMainCategory] = useState(null)
   const [selectedSkillCategory, setSelectedSkillCategory] = useState(null)
 
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">ログインが必要です</h1>
-          <p className="text-gray-600 mb-4">案件を投稿するにはログインしてください。</p>
-          <Link href="/" className="text-blue-600 hover:underline">トップページへ</Link>
-        </div>
-      </div>
-    )
+  useEffect(() => {
+    if (id && session) {
+      loadJob()
+    }
+  }, [id, session])
+
+  const loadJob = async () => {
+    try {
+      setLoading(true)
+      
+      const jobId = parseInt(id, 10)
+
+      const { data: jobData, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single()
+
+      if (error) throw error
+
+      // 投稿者本人かチェック
+      if (jobData.client_email !== session.user.email) {
+        showToast('この案件を編集する権限がありません', 'error')
+        router.push(`/job/${id}`)
+        return
+      }
+
+      // フォームに既存データをセット
+      setFormData({
+        title: jobData.title || '',
+        description: jobData.description || '',
+        deadline: jobData.deadline ? jobData.deadline.split('T')[0] : '',
+        tags: jobData.skills || []
+      })
+
+    } catch (error) {
+      console.error('案件取得エラー:', error)
+      showToast('案件情報の取得に失敗しました', 'error')
+      router.push('/')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleInputChange = (e) => {
@@ -204,50 +239,78 @@ export default function PostJob() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
+    setSaving(true)
 
     try {
-      const category = formData.tags.length > 0 ? formData.tags[0] : 'その他'
+      const res = await fetch(`/api/jobs/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          deadline: formData.deadline || null,
+          skills: formData.tags
+        })
+      })
 
-      const { data, error } = await supabase
-        .from('jobs')
-        .insert([
-          {
-            title: formData.title,
-            category: category,
-            description: formData.description,
-            deadline: formData.deadline || null,
-            skills: formData.tags,
-            client_email: session.user.email,
-            client_name: session.user.name || session.user.email,
-            status: '募集中'
-          }
-        ])
-        .select()
+      const data = await res.json()
 
-      if (error) {
-        throw error
+      if (!res.ok) {
+        throw new Error(data.error || '更新に失敗しました')
       }
 
-      showToast('案件を投稿しました！', 'success')
+      showToast('案件を更新しました！', 'success')
       setTimeout(() => {
-        router.push('/')
+        router.push(`/job/${id}`)
       }, 1000)
     } catch (error) {
-      console.error('案件投稿エラー:', error)
-      showToast('案件投稿に失敗しました: ' + error.message, 'error')
+      console.error('案件更新エラー:', error)
+      showToast(error.message, 'error')
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
   // 今日の日付を取得（最小値として使用）
   const today = new Date().toISOString().split('T')[0]
 
+  if (status === 'loading' || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+          <p className="mt-4 text-gray-600">読み込み中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">ログインが必要です</h1>
+          <p className="text-gray-600 mb-4">案件を編集するにはログインしてください。</p>
+          <Link href="/" className="text-blue-600 hover:underline">トップページへ</Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="bg-white rounded-2xl shadow-xl p-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">案件を投稿</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">案件を編集</h1>
+          <Link
+            href={`/job/${id}`}
+            className="text-blue-600 hover:text-blue-700 font-medium"
+          >
+            ← 戻る
+          </Link>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 案件タイトル */}
@@ -436,17 +499,17 @@ export default function PostJob() {
           <div className="flex space-x-4 pt-4">
             <button
               type="button"
-              onClick={() => router.push('/')}
+              onClick={() => router.push(`/job/${id}`)}
               className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg font-medium transition-colors"
             >
               キャンセル
             </button>
             <button
               type="submit"
-              disabled={loading || formData.tags.length === 0}
+              disabled={saving || formData.tags.length === 0}
               className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-3 px-6 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? '投稿中...' : '案件を投稿'}
+              {saving ? '更新中...' : '変更を保存'}
             </button>
           </div>
         </form>

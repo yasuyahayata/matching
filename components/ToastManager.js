@@ -36,9 +36,9 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ showToast, showConfirm }}>
       {children}
-      <div style={{ position: 'fixed', bottom: 0, right: 0, zIndex: 9999 }}>
+      <div style={{ position: 'fixed', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}>
         {toasts.map((toast, index) => (
-          <div key={toast.id} style={{ marginBottom: index > 0 ? '12px' : '0' }}>
+          <div key={toast.id} style={{ marginTop: index > 0 ? '12px' : '0' }}>
             <Toast
               message={toast.message}
               type={toast.type}

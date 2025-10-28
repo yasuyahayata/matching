@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
+import { useToast } from '../../../components/ToastManager';
 import styles from '../../../styles/Applications.module.css';
 
 export default function ApplicationsPage() {
   const router = useRouter();
   const { id } = router.query;
   const { data: session, status } = useSession();
+  const { showToast } = useToast();
   
   const [job, setJob] = useState(null);
   const [applications, setApplications] = useState([]);
@@ -17,7 +19,7 @@ export default function ApplicationsPage() {
   useEffect(() => {
     if (id && session) {
       fetchJobAndApplications();
-      markNotificationsAsRead(); // 通知を既読にする
+      markNotificationsAsRead();
     }
   }, [id, session]);
 
@@ -77,12 +79,6 @@ export default function ApplicationsPage() {
   };
 
   const handleStatusUpdate = async (applicationId, newStatus) => {
-    const confirmMessage = newStatus === 'approved' 
-      ? 'この応募を承認しますか？' 
-      : 'この応募を却下しますか？';
-    
-    if (!confirm(confirmMessage)) return;
-
     try {
       setProcessingId(applicationId);
       
@@ -100,12 +96,17 @@ export default function ApplicationsPage() {
         throw new Error(data.error || 'ステータスの更新に失敗しました');
       }
 
-      alert(newStatus === 'approved' ? '応募を承認しました！チャットルームが作成されました。' : '応募を却下しました');
+      showToast(
+        newStatus === 'approved' 
+          ? '応募を承認しました！チャットルームが作成されました。' 
+          : '応募を却下しました',
+        newStatus === 'approved' ? 'success' : 'info'
+      );
       await fetchJobAndApplications();
       
     } catch (err) {
       console.error('ステータス更新エラー:', err);
-      alert(err.message);
+      showToast(err.message, 'error');
     } finally {
       setProcessingId(null);
     }
@@ -225,7 +226,7 @@ export default function ApplicationsPage() {
                       if (app.chat_room_id) {
                         router.push(`/chat/${app.chat_room_id}`);
                       } else {
-                        alert('チャットルームが見つかりません。ページを再読み込みしています...');
+                        showToast('チャットルームが見つかりません。ページを再読み込みしています...', 'info');
                         fetchJobAndApplications();
                       }
                     }}

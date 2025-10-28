@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useToast } from '../components/ToastManager'
 
 // タグカテゴリーの定義（プロフィール用）
 const tagCategories = {
@@ -109,6 +110,7 @@ export default function Profile() {
   const { data: session } = useSession()
   const router = useRouter()
   const { email } = router.query
+  const { showToast } = useToast()
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -136,7 +138,7 @@ export default function Profile() {
   const [jobApplications, setJobApplications] = useState({})
   const [expandedJobId, setExpandedJobId] = useState(null)
   const [processingApplicationId, setProcessingApplicationId] = useState(null)
-  const [unreadNewApplications, setUnreadNewApplications] = useState(0) // 🆕 追加
+  const [unreadNewApplications, setUnreadNewApplications] = useState(0)
   const [stats, setStats] = useState({
     totalJobs: 0,
     activeJobs: 0,
@@ -155,7 +157,7 @@ export default function Profile() {
       if (isOwn) {
         loadMyApplications()
         loadUnreadApplicationNotifications()
-        loadUnreadNewApplications() // 🆕 追加
+        loadUnreadNewApplications()
       }
     }
   }, [session, email])
@@ -174,7 +176,7 @@ export default function Profile() {
     }
   }, [activeTab, isOwnProfile])
 
-  // 🆕 「投稿した案件」タブを開いたときに自動既読
+  // 「投稿した案件」タブを開いたときに自動既読
   useEffect(() => {
     if (activeTab === 'posted-jobs' && isOwnProfile) {
       markNewApplicationNotificationsAsRead()
@@ -206,12 +208,6 @@ export default function Profile() {
 
   // 応募のステータス更新（承認・却下）
   const handleApplicationStatusUpdate = async (applicationId, newStatus, jobId) => {
-    const confirmMessage = newStatus === 'approved' 
-      ? 'この応募を承認しますか？チャットルームが作成されます。' 
-      : 'この応募を却下しますか？'
-    
-    if (!confirm(confirmMessage)) return
-
     try {
       setProcessingApplicationId(applicationId)
       
@@ -229,14 +225,14 @@ export default function Profile() {
         throw new Error(data.error || 'ステータスの更新に失敗しました')
       }
 
-      alert(newStatus === 'approved' ? '応募を承認しました！' : '応募を却下しました')
+      showToast(newStatus === 'approved' ? '応募を承認しました！' : '応募を却下しました', newStatus === 'approved' ? 'success' : 'info')
       
       // 応募リストを再読み込み
       await loadApplicationsForJob(jobId)
       
     } catch (err) {
       console.error('ステータス更新エラー:', err)
-      alert(err.message)
+      showToast(err.message, 'error')
     } finally {
       setProcessingApplicationId(null)
     }
@@ -276,7 +272,7 @@ export default function Profile() {
     }
   }
 
-  // 🆕 未読の新規応募通知を取得
+  // 未読の新規応募通知を取得
   const loadUnreadNewApplications = async () => {
     try {
       const res = await fetch('/api/notifications')
@@ -327,7 +323,7 @@ export default function Profile() {
     }
   }
 
-  // 🆕 新規応募通知を既読にする
+  // 新規応募通知を既読にする
   const markNewApplicationNotificationsAsRead = async () => {
     try {
       await fetch('/api/notifications/mark-as-read', {
@@ -510,7 +506,7 @@ export default function Profile() {
 
   const handleSave = async () => {
     if (!isOwnProfile) {
-      alert('他のユーザーのプロフィールは編集できません')
+      showToast('他のユーザーのプロフィールは編集できません', 'error')
       return
     }
 
@@ -568,12 +564,12 @@ export default function Profile() {
         if (error) throw error
       }
 
-      alert('プロフィールを保存しました！')
+      showToast('プロフィールを保存しました！', 'success')
       await loadProfile(session.user.email)
       setActiveTab('overview')
     } catch (error) {
       console.error('保存エラー:', error)
-      alert('プロフィールの保存に失敗しました: ' + error.message)
+      showToast('プロフィールの保存に失敗しました: ' + error.message, 'error')
     } finally {
       setSaving(false)
     }
@@ -662,7 +658,7 @@ export default function Profile() {
               }`}
             >
               📝 投稿した案件
-              {/* 🆕 未読応募通知バッジ */}
+              {/* 未読応募通知バッジ */}
               {isOwnProfile && unreadNewApplications > 0 && (
                 <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {unreadNewApplications}

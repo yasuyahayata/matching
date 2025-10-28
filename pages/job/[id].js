@@ -9,11 +9,12 @@ export default function JobDetail() {
   const { data: session } = useSession()
   const router = useRouter()
   const { id } = router.query
-  const { showToast, showConfirm } = useToast()
+  const { showToast } = useToast()
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [clientProfile, setClientProfile] = useState(null)
   const [completing, setCompleting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   
   // 💬 新機能: メッセージ一覧
   const [chatRooms, setChatRooms] = useState([])
@@ -129,10 +130,6 @@ export default function JobDetail() {
 
   // 🆕 案件を完了にする
   const handleComplete = async () => {
-    const confirmed = await showConfirm('この案件を完了にしますか？\n完了後は案件一覧に表示されなくなります。')
-    
-    if (!confirmed) return
-
     try {
       setCompleting(true)
 
@@ -157,6 +154,38 @@ export default function JobDetail() {
       showToast(error.message, 'error')
     } finally {
       setCompleting(false)
+    }
+  }
+
+  // 🆕 案件を削除
+  const handleDelete = async () => {
+    try {
+      setDeleting(true)
+
+      const res = await fetch(`/api/jobs/${id}`, {
+        method: 'DELETE',
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        if (data.hasApplications) {
+          showToast('応募がある案件は削除できません', 'error')
+        } else {
+          throw new Error(data.error || '削除に失敗しました')
+        }
+        return
+      }
+
+      showToast('案件を削除しました', 'success')
+      setTimeout(() => {
+        router.push('/profile')
+      }, 1000)
+    } catch (error) {
+      console.error('削除エラー:', error)
+      showToast(error.message, 'error')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -508,6 +537,24 @@ export default function JobDetail() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-blue-800 font-medium">これはあなたが投稿した案件です</p>
               </div>
+              
+              {/* 🆕 編集・削除ボタン */}
+              <div className="flex gap-3">
+                <Link 
+                  href={`/job/${job.id}/edit`}
+                  className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-4 px-8 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl font-semibold text-lg text-center"
+                >
+                  ✏️ 編集する
+                </Link>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white py-4 px-8 rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deleting ? '削除中...' : '🗑️ 削除する'}
+                </button>
+              </div>
+
               <div className="flex gap-3">
                 <Link 
                   href={`/job/${job.id}/applications`}
