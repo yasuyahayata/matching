@@ -9,7 +9,7 @@ export default function JobDetail() {
   const { data: session } = useSession()
   const router = useRouter()
   const { id } = router.query
-  const { showToast } = useToast()
+  const { showToast, showConfirm } = useToast()
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [clientProfile, setClientProfile] = useState(null)
@@ -129,9 +129,9 @@ export default function JobDetail() {
 
   // 🆕 案件を完了にする
   const handleComplete = async () => {
-    if (!confirm('この案件を完了にしますか？\n完了後は案件一覧に表示されなくなります。')) {
-      return
-    }
+    const confirmed = await showConfirm('この案件を完了にしますか？\n完了後は案件一覧に表示されなくなります。')
+    
+    if (!confirmed) return
 
     try {
       setCompleting(true)
@@ -149,7 +149,9 @@ export default function JobDetail() {
       }
 
       showToast('案件を完了にしました！', 'success')
-      router.push('/profile')
+      setTimeout(() => {
+        router.push('/profile')
+      }, 1000)
     } catch (error) {
       console.error('完了処理エラー:', error)
       showToast(error.message, 'error')

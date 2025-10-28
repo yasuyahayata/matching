@@ -1,27 +1,28 @@
 .toast {
   position: fixed;
-  top: 24px;
+  bottom: 24px;
   right: 24px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-  backdrop-filter: blur(10px);
+  gap: 16px;
+  padding: 20px 28px;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
   z-index: 9999;
-  animation: slideIn 0.3s ease-out;
-  min-width: 320px;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 360px;
   max-width: 500px;
+  transform-origin: bottom right;
 }
 
-@keyframes slideIn {
+@keyframes slideUp {
   from {
-    transform: translateX(400px);
+    transform: translateY(100px) scale(0.8);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
@@ -29,53 +30,68 @@
 .success {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .error {
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .info {
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
   color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.warning {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .icon {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  flex-shrink: 0;
 }
 
 .message {
   flex: 1;
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.5;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.6;
+  letter-spacing: 0.3px;
 }
 
 .closeButton {
-  background: none;
+  background: rgba(255, 255, 255, 0.2);
   border: none;
   color: white;
-  font-size: 24px;
+  font-size: 20px;
   cursor: pointer;
   padding: 0;
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.7;
-  transition: opacity 0.2s;
+  border-radius: 8px;
+  opacity: 0.8;
+  transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .closeButton:hover {
   opacity: 1;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
 }
