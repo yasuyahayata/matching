@@ -43,7 +43,7 @@ export default function Navbar() {
     <nav className={styles.navbar}>
       <div className={styles.container}>
         <Link href="/" className={styles.logo}>
-          CROWD-MVP
+          マッチングシステム(汎用)
         </Link>
 
         <div className={styles.nav}>

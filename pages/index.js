@@ -1,3 +1,4 @@
+import Head from 'next/head'
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -12,68 +13,68 @@ export default function Home() {
   const [selectedSkillCategory, setSelectedSkillCategory] = useState(null);
   const router = useRouter();
 
-// タグカテゴリーの定義
-const tagCategories = {
-  '業種別': [
-    'EC・小売',
-    'エンタメ・メディア',
-    '飲食・サービス',
-    'IT・テクノロジー',
-    '美容・ファッション',
-    '教育・スクール',
-    '金融・保険',
-    '不動産',
-    '医療・ヘルスケア',
-    '製造業',
-    'コンサルティング',
-    '人材・採用',
-    '旅行・観光',
-    'その他'
-  ],
-  '職種別': [
-    'マーケティング担当',
-    'プロダクトマネージャー',
-    'セールス・営業',
-    'カスタマーサクセス',
-    'カスタマーサポート',
-    'ブランドマネージャー',
-    '広報・PR',
-    'SNS運用',
-    'コンテンツディレクター',
-    'コミュニティマネージャー',
-    'データアナリスト',
-    'プロジェクトマネージャー',
-    'エンジニア',
-    'デザイナー',
-    '編集者・ライター',
-    'その他'
-  ],
-  '課題・目的別': [
-    '新規顧客獲得',
-    'リピート率向上',
-    'ブランディング強化',
-    'エンゲージメント向上',
-    'LTV向上',
-    '口コミ促進'
-  ],
-  '施策・手法別': [
-    'コミュニティ運営',
-    'SNSマーケティング',
-    'イベント企画',
-    'ロイヤリティプログラム',
-    'UGC活用',
-    'インフルエンサー連携'
-  ],
-  'スキル・専門分野別': [
-    'プログラミング',
-    'デザイン',
-    '動画・映像',
-    'ライティング',
-    'マーケティング',
-    'データ分析',
-    'プロジェクト管理'
-  ]
-};
+  // タグカテゴリーの定義
+  const tagCategories = {
+    '業種別': [
+      'EC・小売',
+      'エンタメ・メディア',
+      '飲食・サービス',
+      'IT・テクノロジー',
+      '美容・ファッション',
+      '教育・スクール',
+      '金融・保険',
+      '不動産',
+      '医療・ヘルスケア',
+      '製造業',
+      'コンサルティング',
+      '人材・採用',
+      '旅行・観光',
+      'その他'
+    ],
+    '職種別': [
+      'マーケティング担当',
+      'プロダクトマネージャー',
+      'セールス・営業',
+      'カスタマーサクセス',
+      'カスタマーサポート',
+      'ブランドマネージャー',
+      '広報・PR',
+      'SNS運用',
+      'コンテンツディレクター',
+      'コミュニティマネージャー',
+      'データアナリスト',
+      'プロジェクトマネージャー',
+      'エンジニア',
+      'デザイナー',
+      '編集者・ライター',
+      'その他'
+    ],
+    '課題・目的別': [
+      '新規顧客獲得',
+      'リピート率向上',
+      'ブランディング強化',
+      'エンゲージメント向上',
+      'LTV向上',
+      '口コミ促進'
+    ],
+    '施策・手法別': [
+      'コミュニティ運営',
+      'SNSマーケティング',
+      'イベント企画',
+      'ロイヤリティプログラム',
+      'UGC活用',
+      'インフルエンサー連携'
+    ],
+    'スキル・専門分野別': [
+      'プログラミング',
+      'デザイン',
+      '動画・映像',
+      'ライティング',
+      'マーケティング',
+      'データ分析',
+      'プロジェクト管理'
+    ]
+  };
 
   // スキル・専門分野の詳細（3階層目）
   const skillDetails = {
@@ -119,7 +120,6 @@ const tagCategories = {
 
   async function fetchJobs() {
     try {
-      // 🆕 完了した案件を除外
       const { data, error } = await supabase
         .from('jobs')
         .select('*')
@@ -199,169 +199,176 @@ const tagCategories = {
   });
 
   return (
-    <div className={styles.container}>
-      <div className={styles.hero}>
-        <h1 className={styles.heroTitle}>ファンと共に成長する</h1>
-        <p className={styles.heroSubtitle}>
-          ファンマーケティングの実践事例、ノウハウ、最新トレンドを共有するプラットフォーム
-        </p>
-      </div>
+    <>
+      <Head>
+        <title>案件一覧 | マッチングシステム(汎用)</title>
+        <meta name="description" content="企業と企業をマッチングするプラットフォーム" />
+      </Head>
 
-      <div className={styles.searchSection}>
-        <div className={styles.searchBar}>
-          <input
-            type="text"
-            placeholder="キーワードで検索..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={styles.searchInput}
-          />
-          <button className={styles.postButton} onClick={() => router.push('/post-job')}>
-            案件を投稿する
-          </button>
+      <div className={styles.container}>
+        <div className={styles.hero}>
+          <h1 className={styles.heroTitle}>ファンと共に成長する</h1>
+          <p className={styles.heroSubtitle}>
+            ファンマーケティングの実践事例、ノウハウ、最新トレンドを共有するプラットフォーム
+          </p>
         </div>
 
-        {/* メインカテゴリー */}
-        <div className={styles.mainCategories}>
-          {Object.keys(tagCategories).map(category => (
-            <button
-              key={category}
-              onClick={() => handleMainCategoryClick(category)}
-              className={`${styles.mainCategoryButton} ${
-                selectedMainCategory === category ? styles.mainCategoryButtonActive : ''
-              }`}
-            >
-              {category}
-              <span className={styles.arrow}>
-                {selectedMainCategory === category ? '▲' : '▼'}
-              </span>
+        <div className={styles.searchSection}>
+          <div className={styles.searchBar}>
+            <input
+              type="text"
+              placeholder="キーワードで検索..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={styles.searchInput}
+            />
+            <button className={styles.postButton} onClick={() => router.push('/post-job')}>
+              案件を投稿する
             </button>
-          ))}
-        </div>
+          </div>
 
-        {/* サブカテゴリー（2階層目） */}
-        {selectedMainCategory && !selectedSkillCategory && (
-          <div className={styles.subCategories}>
-            {tagCategories[selectedMainCategory].map(subCategory => (
+          {/* メインカテゴリー */}
+          <div className={styles.mainCategories}>
+            {Object.keys(tagCategories).map(category => (
               <button
-                key={subCategory}
-                onClick={() => handleSubCategoryClick(subCategory)}
-                className={`${styles.subCategoryButton} ${
-                  selectedSubCategories.includes(subCategory) ? styles.subCategoryButtonActive : ''
+                key={category}
+                onClick={() => handleMainCategoryClick(category)}
+                className={`${styles.mainCategoryButton} ${
+                  selectedMainCategory === category ? styles.mainCategoryButtonActive : ''
                 }`}
               >
-                {subCategory}
-                {selectedMainCategory === 'スキル・専門分野別' && skillDetails[subCategory] && (
-                  <span className={styles.arrowRight}>→</span>
-                )}
-                {selectedSubCategories.includes(subCategory) && (
-                  <span className={styles.checkmark}>✓</span>
-                )}
+                {category}
+                <span className={styles.arrow}>
+                  {selectedMainCategory === category ? '▲' : '▼'}
+                </span>
               </button>
             ))}
           </div>
-        )}
 
-        {/* 詳細スキル（3階層目） */}
-        {selectedSkillCategory && (
-          <div className={styles.skillDetails}>
-            <div className={styles.skillDetailsHeader}>
-              <button onClick={backToSkillCategories} className={styles.backButton}>
-                ← {selectedSkillCategory}
-              </button>
-            </div>
-            <div className={styles.detailSkills}>
-              {skillDetails[selectedSkillCategory].map(skill => (
+          {/* サブカテゴリー（2階層目） */}
+          {selectedMainCategory && !selectedSkillCategory && (
+            <div className={styles.subCategories}>
+              {tagCategories[selectedMainCategory].map(subCategory => (
                 <button
-                  key={skill}
-                  onClick={() => handleDetailSkillClick(skill)}
-                  className={`${styles.detailSkillButton} ${
-                    selectedSubCategories.includes(skill) ? styles.detailSkillButtonActive : ''
+                  key={subCategory}
+                  onClick={() => handleSubCategoryClick(subCategory)}
+                  className={`${styles.subCategoryButton} ${
+                    selectedSubCategories.includes(subCategory) ? styles.subCategoryButtonActive : ''
                   }`}
                 >
-                  {skill}
-                  {selectedSubCategories.includes(skill) && (
+                  {subCategory}
+                  {selectedMainCategory === 'スキル・専門分野別' && skillDetails[subCategory] && (
+                    <span className={styles.arrowRight}>→</span>
+                  )}
+                  {selectedSubCategories.includes(subCategory) && (
                     <span className={styles.checkmark}>✓</span>
                   )}
                 </button>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 選択中のタグ表示 */}
-        {selectedSubCategories.length > 0 && (
-          <div className={styles.selectedTags}>
-            <span className={styles.selectedTagsLabel}>選択中:</span>
-            {selectedSubCategories.map(tag => (
-              <span key={tag} className={styles.selectedTag}>
-                {tag}
-                <button
-                  onClick={() => {
-                    setSelectedSubCategories(selectedSubCategories.filter(t => t !== tag));
-                  }}
-                  className={styles.removeTagButton}
-                >
-                  ×
+          {/* 詳細スキル（3階層目） */}
+          {selectedSkillCategory && (
+            <div className={styles.skillDetails}>
+              <div className={styles.skillDetailsHeader}>
+                <button onClick={backToSkillCategories} className={styles.backButton}>
+                  ← {selectedSkillCategory}
                 </button>
-              </span>
-            ))}
-            <button onClick={clearAllTags} className={styles.clearAllButton}>
-              すべてクリア
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className={styles.jobsGrid}>
-        {filteredJobs.map(job => (
-          <Link href={`/job/${job.id}`} key={job.id} className={styles.jobCard}>
-            {/* 1. ユーザー名 */}
-            <div className={styles.clientInfo}>
-              <div className={styles.clientAvatar}>
-                {(job.client_name?.charAt(0) || 'U').toUpperCase()}
               </div>
-              <div className={styles.clientDetails}>
-                <span className={styles.clientName}>{job.client_name || '匿名ユーザー'}</span>
-                <span className={styles.clientLabel}>投稿者</span>
+              <div className={styles.detailSkills}>
+                {skillDetails[selectedSkillCategory].map(skill => (
+                  <button
+                    key={skill}
+                    onClick={() => handleDetailSkillClick(skill)}
+                    className={`${styles.detailSkillButton} ${
+                      selectedSubCategories.includes(skill) ? styles.detailSkillButtonActive : ''
+                    }`}
+                  >
+                    {skill}
+                    {selectedSubCategories.includes(skill) && (
+                      <span className={styles.checkmark}>✓</span>
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
+          )}
 
-            {/* 2. 案件のタイトル */}
-            <h3 className={styles.jobTitle}>{job.title}</h3>
-
-            {/* 3. 詳細（説明文） */}
-            <p className={styles.jobDescription}>
-              {job.description.length > 120 
-                ? `${job.description.substring(0, 120)}...` 
-                : job.description}
-            </p>
-
-            {/* 4. 選択されたタグ一覧 */}
-            {job.skills && job.skills.length > 0 && (
-              <div className={styles.jobSkills}>
-                {job.skills.slice(0, 4).map((skill, index) => (
-                  <span key={index} className={styles.skillTag}>
-                    {skill}
-                  </span>
-                ))}
-                {job.skills.length > 4 && (
-                  <span className={styles.skillTag}>+{job.skills.length - 4}</span>
-                )}
-              </div>
-            )}
-
-            {/* 5. 詳細を見るボタン */}
-            <button className={styles.jobDetailButton}>詳細を見る →</button>
-          </Link>
-        ))}
-      </div>
-
-      {filteredJobs.length === 0 && (
-        <div className={styles.noJobs}>
-          <p>該当するコンテンツが見つかりませんでした</p>
+          {/* 選択中のタグ表示 */}
+          {selectedSubCategories.length > 0 && (
+            <div className={styles.selectedTags}>
+              <span className={styles.selectedTagsLabel}>選択中:</span>
+              {selectedSubCategories.map(tag => (
+                <span key={tag} className={styles.selectedTag}>
+                  {tag}
+                  <button
+                    onClick={() => {
+                      setSelectedSubCategories(selectedSubCategories.filter(t => t !== tag));
+                    }}
+                    className={styles.removeTagButton}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              <button onClick={clearAllTags} className={styles.clearAllButton}>
+                すべてクリア
+              </button>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+
+        <div className={styles.jobsGrid}>
+          {filteredJobs.map(job => (
+            <Link href={`/job/${job.id}`} key={job.id} className={styles.jobCard}>
+              {/* 1. ユーザー名 */}
+              <div className={styles.clientInfo}>
+                <div className={styles.clientAvatar}>
+                  {(job.client_name?.charAt(0) || 'U').toUpperCase()}
+                </div>
+                <div className={styles.clientDetails}>
+                  <span className={styles.clientName}>{job.client_name || '匿名ユーザー'}</span>
+                  <span className={styles.clientLabel}>投稿者</span>
+                </div>
+              </div>
+
+              {/* 2. 案件のタイトル */}
+              <h3 className={styles.jobTitle}>{job.title}</h3>
+
+              {/* 3. 詳細（説明文） */}
+              <p className={styles.jobDescription}>
+                {job.description.length > 120 
+                  ? `${job.description.substring(0, 120)}...` 
+                  : job.description}
+              </p>
+
+              {/* 4. 選択されたタグ一覧 */}
+              {job.skills && job.skills.length > 0 && (
+                <div className={styles.jobSkills}>
+                  {job.skills.slice(0, 4).map((skill, index) => (
+                    <span key={index} className={styles.skillTag}>
+                      {skill}
+                    </span>
+                  ))}
+                  {job.skills.length > 4 && (
+                    <span className={styles.skillTag}>+{job.skills.length - 4}</span>
+                  )}
+                </div>
+              )}
+
+              {/* 5. 詳細を見るボタン */}
+              <button className={styles.jobDetailButton}>詳細を見る →</button>
+            </Link>
+          ))}
+        </div>
+
+        {filteredJobs.length === 0 && (
+          <div className={styles.noJobs}>
+            <p>該当するコンテンツが見つかりませんでした</p>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

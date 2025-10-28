@@ -534,36 +534,37 @@ export default function JobDetail() {
             </div>
           )}
 
-          {isOwnJob && (
-            <div className="pt-6 border-t border-gray-200 space-y-3">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-blue-800 font-medium">これはあなたが投稿した案件です</p>
-              </div>
-              
-              {/* 🆕 編集・削除ボタン */}
-              <div className="flex gap-3">
-                <Link 
-                  href={`/job/${job.id}/edit`}
-                  className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-4 px-8 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl font-semibold text-lg text-center"
-                >
-                  ✏️ 編集する
-                </Link>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white py-4 px-8 rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {deleting ? '削除中...' : '🗑️ 削除する'}
-                </button>
-              </div>
+{isOwnJob && (
+  <div className="pt-6 border-t border-gray-200 space-y-3">
+    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <p className="text-blue-800 font-medium">これはあなたが投稿した案件です</p>
+    </div>
+    
+    {/* 🆕 編集・削除ボタン */}
+    <div className="flex gap-3">
+      <Link 
+        href={`/job/${job.id}/edit`}
+        className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-4 px-8 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl font-semibold text-lg text-center"
+      >
+        ✏️ 編集
+      </Link>
+      <button
+        onClick={handleDelete}
+        disabled={deleting}
+        className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white py-4 px-8 rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {deleting ? '削除中...' : '🗑️ 削除'}
+      </button>
+    </div>
 
-              <div className="flex gap-3">
-                <Link 
-                  href={`/job/${job.id}/applications`}
-                  className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 text-white py-4 px-8 rounded-lg hover:from-green-700 hover:to-teal-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg text-center"
-                >
-                  📋 応募者一覧を見る
-                </Link>
+    <div className="flex gap-3">  {/* ← この部分を修正 */}
+      <Link 
+        href={`/job/${job.id}/applications`}
+        className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 text-white py-4 px-8 rounded-lg hover:from-green-700 hover:to-teal-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg text-center whitespace-nowrap"
+      >
+        📋 応募者
+      </Link>
+
                 {/* 🆕 完了ボタン */}
                 {job.status !== '完了' && (
                   <button
@@ -571,7 +572,7 @@ export default function JobDetail() {
                     disabled={completing}
                     className="flex-1 bg-gradient-to-r from-gray-600 to-gray-700 text-white py-4 px-8 rounded-lg hover:from-gray-700 hover:to-gray-800 transition-all shadow-lg hover:shadow-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {completing ? '処理中...' : '✓ 完了にする'}
+                    {completing ? '処理中...' : '✓ 完了'}
                   </button>
                 )}
               </div>

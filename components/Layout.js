@@ -8,7 +8,7 @@ export default function Layout({ children }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
-  const [unreadProfileCount, setUnreadProfileCount] = useState(0); // 🆕 プロフィール通知
+  const [unreadProfileCount, setUnreadProfileCount] = useState(0);
 
   const fetchUnreadChatCount = async () => {
     if (status === 'loading') return;
@@ -34,7 +34,6 @@ export default function Layout({ children }) {
     }
   };
 
-  // 🆕 プロフィール通知数を取得
   const fetchUnreadProfileCount = async () => {
     if (status === 'loading') return;
     
@@ -47,7 +46,6 @@ export default function Layout({ children }) {
       const res = await fetch('/api/notifications');
       if (res.ok) {
         const notifications = await res.json();
-        // new_application, application_approved, application_rejected の未読数
         const count = notifications.filter(notif => 
           !notif.is_read && 
           (notif.type === 'new_application' || 
@@ -67,15 +65,13 @@ export default function Layout({ children }) {
 
   const fetchAllUnreadCounts = () => {
     fetchUnreadChatCount();
-    fetchUnreadProfileCount(); // 🆕 追加
+    fetchUnreadProfileCount();
   };
 
-  // 初回読み込み
   useEffect(() => {
     fetchAllUnreadCounts();
   }, [session, status]);
 
-  // 5秒ごとに更新
   useEffect(() => {
     if (!session) return;
 
@@ -86,7 +82,6 @@ export default function Layout({ children }) {
     return () => clearInterval(interval);
   }, [session]);
 
-  // ページ遷移時に更新
   useEffect(() => {
     const handleRouteChange = () => {
       if (session) {
@@ -102,7 +97,6 @@ export default function Layout({ children }) {
     };
   }, [session, router.events]);
 
-  // ページフォーカス時に更新
   useEffect(() => {
     const handleFocus = () => {
       if (session) {
@@ -110,7 +104,6 @@ export default function Layout({ children }) {
       }
     };
 
-    // 既読イベントを受け取る
     const handleMessagesRead = () => {
       if (session) {
         console.log('既読イベントを受信、未読数を更新します');
@@ -127,14 +120,13 @@ export default function Layout({ children }) {
     };
   }, [session]);
 
-  // チャットの未読数のみ表示（通知は含めない）
   const totalUnreadCount = unreadChatCount;
 
   return (
     <div className={styles.container}>
       <nav className={styles.nav}>
         <Link href="/" className={styles.logo}>
-          CrowdWork MVP
+          マッチングシステム(汎用)
         </Link>
         <div className={styles.navLinks}>
           {status === 'loading' ? (
@@ -150,7 +142,6 @@ export default function Layout({ children }) {
                   <span className={styles.unreadBadge}>{totalUnreadCount}</span>
                 )}
               </Link>
-              {/* 🆕 プロフィールにバッジ追加 */}
               <Link href="/profile" className={styles.navLink}>
                 プロフィール
                 {unreadProfileCount > 0 && (

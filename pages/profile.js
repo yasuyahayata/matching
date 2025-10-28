@@ -107,7 +107,7 @@ const skillDetails = {
 };
 
 export default function Profile() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const { email } = router.query
   const { showToast } = useToast()
@@ -923,15 +923,21 @@ export default function Profile() {
                         <div className="flex space-x-3 mt-4">
                           <Link
                             href={`/job/${job.id}`}
-                            className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all text-sm"
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                           >
                             詳細を見る
+                          </Link>
+                          <Link
+                            href={`/job/${job.id}/applications`}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                          >
+                            📋 応募者
                           </Link>
                           {/* 応募者表示トグルボタン */}
                           {isOwnProfile && applications.length > 0 && (
                             <button
                               onClick={() => setExpandedJobId(isExpanded ? null : job.id)}
-                              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-all text-sm"
+                              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all text-sm font-medium"
                             >
                               {isExpanded ? '▲ 応募者を隠す' : `▼ 応募者を表示 (${applications.length}件)`}
                             </button>
