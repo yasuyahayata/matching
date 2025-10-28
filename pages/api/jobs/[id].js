@@ -2,9 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]';
 
-const supabase = createClient(
+// 🆕 Service Role Key を使用（サーバーサイド専用）
+const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY // 🆕 Service Role Key
 );
 
 export default async function handler(req, res) {
@@ -20,7 +21,7 @@ export default async function handler(req, res) {
   // GETメソッド - 案件取得
   if (req.method === 'GET') {
     try {
-      const { data: job, error } = await supabase
+      const { data: job, error } = await supabaseAdmin
         .from('jobs')
         .select('*')
         .eq('id', jobId)
@@ -53,7 +54,7 @@ export default async function handler(req, res) {
       }
 
       // 既存の案件を取得
-      const { data: existingJob, error: fetchError } = await supabase
+      const { data: existingJob, error: fetchError } = await supabaseAdmin
         .from('jobs')
         .select('*')
         .eq('id', jobId)
@@ -76,7 +77,7 @@ export default async function handler(req, res) {
       }
 
       // 案件を更新
-      const { data: updatedJob, error: updateError } = await supabase
+      const { data: updatedJob, error: updateError } = await supabaseAdmin
         .from('jobs')
         .update({
           title,
@@ -113,13 +114,16 @@ export default async function handler(req, res) {
       }
 
       // 既存の案件を取得
-      const { data: existingJob, error: fetchError } = await supabase
+      const { data: existingJob, error: fetchError } = await supabaseAdmin
         .from('jobs')
         .select('*')
         .eq('id', jobId)
         .single();
 
+      console.log('🔍 削除対象の案件:', existingJob);
+
       if (fetchError || !existingJob) {
+        console.log('❌ 案件が見つかりません:', fetchError);
         return res.status(404).json({ error: '案件が見つかりません' });
       }
 
@@ -129,10 +133,12 @@ export default async function handler(req, res) {
       }
 
       // 応募がある場合は削除できないようにする
-      const { data: applications, error: appError } = await supabase
+      const { data: applications, error: appError } = await supabaseAdmin
         .from('applications')
         .select('id')
         .eq('job_id', jobId);
+
+      console.log('📋 応募数:', applications?.length);
 
       if (appError) {
         console.error('Applications check error:', appError);
@@ -145,17 +151,18 @@ export default async function handler(req, res) {
         });
       }
 
-      // 案件を削除
-      const { error: deleteError } = await supabase
+      // 🆕 案件を削除（Service Role Key使用）
+      const { error: deleteError } = await supabaseAdmin
         .from('jobs')
         .delete()
         .eq('id', jobId);
 
       if (deleteError) {
-        console.error('Delete error:', deleteError);
+        console.error('❌ 削除エラー:', deleteError);
         return res.status(500).json({ error: '案件の削除に失敗しました' });
       }
 
+      console.log('✅ 削除成功:', jobId);
       return res.status(200).json({ message: '案件を削除しました' });
 
     } catch (error) {

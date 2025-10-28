@@ -157,7 +157,7 @@ export default function JobDetail() {
     }
   }
 
-  // 🆕 案件を削除
+  // 🆕 案件を削除（修正版）
   const handleDelete = async () => {
     try {
       setDeleting(true)
@@ -178,9 +178,11 @@ export default function JobDetail() {
       }
 
       showToast('案件を削除しました', 'success')
+      
+      // 🆕 少し待ってからリダイレクト（Supabaseの変更が反映されるまで）
       setTimeout(() => {
-        router.push('/profile')
-      }, 1000)
+        router.push('/')
+      }, 1500)
     } catch (error) {
       console.error('削除エラー:', error)
       showToast(error.message, 'error')
