@@ -43,11 +43,12 @@ export default function Layout({ children }) {
     }
 
     try {
-      const res = await fetch('/api/notifications/unread-count');
+      // 🆕 new_application を除外した未読通知を取得
+      const res = await fetch('/api/notifications/unread-count?exclude=new_application');
       if (res.ok) {
         const data = await res.json();
         const count = Number(data.count) || 0;
-        console.log('未読通知数:', count);
+        console.log('未読通知数（応募通知を除く）:', count);
         setUnreadNotificationCount(count);
       } else {
         setUnreadNotificationCount(0);

@@ -136,6 +136,7 @@ export default function Profile() {
   const [jobApplications, setJobApplications] = useState({})
   const [expandedJobId, setExpandedJobId] = useState(null)
   const [processingApplicationId, setProcessingApplicationId] = useState(null)
+  const [unreadNewApplications, setUnreadNewApplications] = useState(0) // 🆕 追加
   const [stats, setStats] = useState({
     totalJobs: 0,
     activeJobs: 0,
@@ -154,6 +155,7 @@ export default function Profile() {
       if (isOwn) {
         loadMyApplications()
         loadUnreadApplicationNotifications()
+        loadUnreadNewApplications() // 🆕 追加
       }
     }
   }, [session, email])
@@ -169,6 +171,13 @@ export default function Profile() {
   useEffect(() => {
     if (activeTab === 'my-applications' && isOwnProfile) {
       markApplicationNotificationsAsRead()
+    }
+  }, [activeTab, isOwnProfile])
+
+  // 🆕 「投稿した案件」タブを開いたときに自動既読
+  useEffect(() => {
+    if (activeTab === 'posted-jobs' && isOwnProfile) {
+      markNewApplicationNotificationsAsRead()
     }
   }, [activeTab, isOwnProfile])
 
@@ -267,6 +276,24 @@ export default function Profile() {
     }
   }
 
+  // 🆕 未読の新規応募通知を取得
+  const loadUnreadNewApplications = async () => {
+    try {
+      const res = await fetch('/api/notifications')
+      if (!res.ok) throw new Error('通知の取得に失敗しました')
+      
+      const notifications = await res.json()
+      // new_application の未読通知をカウント
+      const unreadCount = notifications.filter(notif => 
+        !notif.is_read && notif.type === 'new_application'
+      ).length
+      
+      setUnreadNewApplications(unreadCount)
+    } catch (error) {
+      console.error('応募通知取得エラー:', error)
+    }
+  }
+
   // 応募通知を既読にする
   const markApplicationNotificationsAsRead = async () => {
     try {
@@ -292,6 +319,29 @@ export default function Profile() {
       
       // 未読数を再取得
       await loadUnreadApplicationNotifications()
+      
+      // ナビゲーションバーの未読数を更新
+      window.dispatchEvent(new Event('messagesRead'))
+    } catch (error) {
+      console.error('通知既読エラー:', error)
+    }
+  }
+
+  // 🆕 新規応募通知を既読にする
+  const markNewApplicationNotificationsAsRead = async () => {
+    try {
+      await fetch('/api/notifications/mark-as-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          type: 'new_application'
+        })
+      })
+      
+      console.log('新規応募通知を既読にしました')
+      
+      // 未読数を再取得
+      await loadUnreadNewApplications()
       
       // ナビゲーションバーの未読数を更新
       window.dispatchEvent(new Event('messagesRead'))
@@ -605,13 +655,19 @@ export default function Profile() {
             </button>
             <button
               onClick={() => setActiveTab('posted-jobs')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors relative ${
                 activeTab === 'posted-jobs'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
               📝 投稿した案件
+              {/* 🆕 未読応募通知バッジ */}
+              {isOwnProfile && unreadNewApplications > 0 && (
+                <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadNewApplications}
+                </span>
+              )}
             </button>
             {isOwnProfile && (
               <button
@@ -779,7 +835,6 @@ export default function Profile() {
                               )}
                             </div>
                             <p className="text-gray-600 mb-3 line-clamp-2">{job.description}</p>
-                            {/* 🗑️ 予算・期限・カテゴリーの行を削除 */}
                             {job.skills && job.skills.length > 0 && (
                               <div className="flex flex-wrap gap-2 mt-3">
                                 {job.skills.slice(0, 5).map((skill, index) => (
