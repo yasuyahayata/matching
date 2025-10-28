@@ -1,19 +1,16 @@
-import Layout from '../components/Layout';
-import '../styles/globals.css';
-import { SessionProvider } from 'next-auth/react';
+import { SessionProvider } from 'next-auth/react'
+import Layout from '../components/Layout'
+import { ToastProvider } from '../components/ToastManager'
+import '../styles/globals.css'
 
-console.log('@@@ _app.js FILE LOADED @@@');
-
-function MyApp({ Component, pageProps: { session, ...pageProps } }) {
-  console.log('@@@ MyApp FUNCTION CALLED @@@');
-  
+export default function App({ Component, pageProps: { session, ...pageProps } }) {
   return (
     <SessionProvider session={session}>
-      <Layout>
-        <Component {...pageProps} />
-      </Layout>
+      <ToastProvider>
+        <Layout>
+          <Component {...pageProps} />
+        </Layout>
+      </ToastProvider>
     </SessionProvider>
-  );
+  )
 }
-
-export default MyApp;

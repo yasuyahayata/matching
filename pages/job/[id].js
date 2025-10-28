@@ -3,15 +3,17 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useToast } from '../../components/ToastManager'
 
 export default function JobDetail() {
   const { data: session } = useSession()
   const router = useRouter()
   const { id } = router.query
+  const { showToast } = useToast()
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
   const [clientProfile, setClientProfile] = useState(null)
-  const [completing, setCompleting] = useState(false) // 🆕 完了処理中
+  const [completing, setCompleting] = useState(false)
   
   // 💬 新機能: メッセージ一覧
   const [chatRooms, setChatRooms] = useState([])
@@ -81,7 +83,7 @@ export default function JobDetail() {
       }
     } catch (error) {
       console.error('案件詳細取得エラー:', error)
-      alert('案件情報の取得に失敗しました: ' + error.message)
+      showToast('案件情報の取得に失敗しました', 'error')
       setJob(null)
     } finally {
       setLoading(false)
@@ -146,11 +148,11 @@ export default function JobDetail() {
         throw new Error(data.error || '完了処理に失敗しました')
       }
 
-      alert('案件を完了にしました！')
-      router.push('/profile') // プロフィールページに遷移
+      showToast('案件を完了にしました！', 'success')
+      router.push('/profile')
     } catch (error) {
       console.error('完了処理エラー:', error)
-      alert('完了処理に失敗しました: ' + error.message)
+      showToast(error.message, 'error')
     } finally {
       setCompleting(false)
     }
@@ -193,20 +195,20 @@ export default function JobDetail() {
 
   const handleApply = () => {
     if (!session) {
-      alert('応募するにはログインが必要です')
+      showToast('応募するにはログインが必要です', 'info')
       signIn('google')
       return
     }
 
     // 🆕 期限チェック
     if (isExpired()) {
-      alert('この案件の募集期限は終了しました')
+      showToast('この案件の募集期限は終了しました', 'error')
       return
     }
 
     // 🆕 既に応募済みの場合
     if (hasApplied) {
-      alert('この案件には既に応募済みです')
+      showToast('この案件には既に応募済みです', 'info')
       return
     }
 
@@ -217,20 +219,20 @@ export default function JobDetail() {
     e.preventDefault()
     
     if (!applyForm.message) {
-      alert('メッセージを入力してください')
+      showToast('メッセージを入力してください', 'error')
       return
     }
 
     // 🆕 二重応募チェック
     if (hasApplied) {
-      alert('この案件には既に応募済みです')
+      showToast('この案件には既に応募済みです', 'info')
       setShowApplyModal(false)
       return
     }
 
     // 🆕 期限チェック
     if (isExpired()) {
-      alert('この案件の募集期限は終了しました')
+      showToast('この案件の募集期限は終了しました', 'error')
       setShowApplyModal(false)
       return
     }
@@ -252,7 +254,7 @@ export default function JobDetail() {
       if (error) {
         // 🆕 ユニーク制約エラーの場合
         if (error.code === '23505') {
-          alert('この案件には既に応募済みです')
+          showToast('この案件には既に応募済みです', 'info')
           setHasApplied(true)
           setShowApplyModal(false)
           return
@@ -283,7 +285,7 @@ export default function JobDetail() {
         // 通知エラーでも応募は成功とする
       }
 
-      alert('応募が完了しました！')
+      showToast('応募が完了しました！', 'success')
       setShowApplyModal(false)
       setApplyForm({ message: '' })
       
@@ -293,7 +295,7 @@ export default function JobDetail() {
       
     } catch (error) {
       console.error('応募エラー:', error)
-      alert('応募に失敗しました: ' + error.message)
+      showToast('応募に失敗しました', 'error')
     } finally {
       setApplying(false)
     }
@@ -302,7 +304,7 @@ export default function JobDetail() {
   // 💬 新機能: チャット開始
   const handleStartChat = async () => {
     if (!session) {
-      alert('チャットするにはログインが必要です')
+      showToast('チャットするにはログインが必要です', 'info')
       signIn('google')
       return
     }
@@ -331,7 +333,7 @@ export default function JobDetail() {
       router.push(`/chat/${chatRoom.id}`)
     } catch (error) {
       console.error('チャット開始エラー:', error)
-      alert('チャットの開始に失敗しました')
+      showToast('チャットの開始に失敗しました', 'error')
     }
   }
 
