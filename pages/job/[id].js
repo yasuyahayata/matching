@@ -509,36 +509,37 @@ export default function JobDetail() {
             </div>
           )}
 
-{isOwnJob && (
-  <div className="pt-8 border-t-2 border-gray-200 space-y-4">
-    <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-5">
-      <p className="text-blue-800 font-semibold text-base">これはあなたが投稿した案件です</p>
-    </div>
-    
-    <div className="flex gap-4">
-      <Link 
-        href={`/job/${job.id}/edit`}
-        className="flex-1 bg-yellow-500 text-white py-4 px-8 rounded-lg hover:bg-yellow-600 transition-all font-semibold text-base text-center"
-      >
-        ✏️ 編集
-      </Link>
-      <button
-        onClick={handleDelete}
-        disabled={deleting}
-        className="flex-1 bg-red-600 text-white py-4 px-8 rounded-lg hover:bg-red-700 transition-all font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {deleting ? '削除中...' : '🗑️ 削除'}
-      </button>
-    </div>
+          {isOwnJob && (
+            <div className="pt-8 border-t-2 border-gray-200 space-y-4">
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-5">
+                <p className="text-blue-800 font-semibold text-base">これはあなたが投稿した案件です</p>
+              </div>
+              
+              <div className="flex gap-4">
+                <Link 
+                  href={`/job/${job.id}/edit`}
+                  className="flex-1 bg-yellow-500 text-white py-4 px-8 rounded-lg hover:bg-yellow-600 transition-all font-semibold text-base text-center"
+                >
+                  ✏️ 編集
+                </Link>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 bg-red-600 text-white py-4 px-8 rounded-lg hover:bg-red-700 transition-all font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deleting ? '削除中...' : '🗑️ 削除'}
+                </button>
+              </div>
 
-    <div className="flex gap-4">
-      <Link 
-        href={`/job/${job.id}/applications`}
-        className="flex-1 bg-green-600 text-white py-4 px-8 rounded-lg hover:bg-green-700 transition-all font-semibold text-base text-center whitespace-nowrap"
-      >
-        📋 応募者
-      </Link>
+              <div className="flex gap-4">
+                <Link 
+                  href={`/job/${job.id}/applications`}
+                  className="flex-1 bg-green-600 text-white py-4 px-8 rounded-lg hover:bg-green-700 transition-all font-semibold text-base text-center"
+                >
+                  📋 応募者
+                </Link>
 
+                {/* 完了ボタン */}
                 {job.status !== '完了' && (
                   <button
                     onClick={handleComplete}
