@@ -8,6 +8,7 @@ export default function Layout({ children }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [unreadProfileCount, setUnreadProfileCount] = useState(0); // 🆕 プロフィール通知
 
   const fetchUnreadChatCount = async () => {
     if (status === 'loading') return;
@@ -33,8 +34,40 @@ export default function Layout({ children }) {
     }
   };
 
+  // 🆕 プロフィール通知数を取得
+  const fetchUnreadProfileCount = async () => {
+    if (status === 'loading') return;
+    
+    if (!session) {
+      setUnreadProfileCount(0);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/notifications');
+      if (res.ok) {
+        const notifications = await res.json();
+        // new_application, application_approved, application_rejected の未読数
+        const count = notifications.filter(notif => 
+          !notif.is_read && 
+          (notif.type === 'new_application' || 
+           notif.type === 'application_approved' || 
+           notif.type === 'application_rejected')
+        ).length;
+        console.log('未読プロフィール通知数:', count);
+        setUnreadProfileCount(count);
+      } else {
+        setUnreadProfileCount(0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread profile count:', error);
+      setUnreadProfileCount(0);
+    }
+  };
+
   const fetchAllUnreadCounts = () => {
     fetchUnreadChatCount();
+    fetchUnreadProfileCount(); // 🆕 追加
   };
 
   // 初回読み込み
@@ -94,7 +127,7 @@ export default function Layout({ children }) {
     };
   }, [session]);
 
-  // 🆕 チャットの未読数のみ表示（通知は含めない）
+  // チャットの未読数のみ表示（通知は含めない）
   const totalUnreadCount = unreadChatCount;
 
   return (
@@ -117,8 +150,12 @@ export default function Layout({ children }) {
                   <span className={styles.unreadBadge}>{totalUnreadCount}</span>
                 )}
               </Link>
+              {/* 🆕 プロフィールにバッジ追加 */}
               <Link href="/profile" className={styles.navLink}>
                 プロフィール
+                {unreadProfileCount > 0 && (
+                  <span className={styles.unreadBadge}>{unreadProfileCount}</span>
+                )}
               </Link>
               <Link href={`/profile?user=${session.user.name}`} className={styles.userName}>
                 {session.user.name}
