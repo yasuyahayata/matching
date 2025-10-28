@@ -965,14 +965,11 @@ export default function Profile() {
                   <div className="space-y-6">
                     {myApplications.map((app) => {
                       const statusConfig = getStatusBadge(app.status)
-                      const hasUnreadNotification = app.status !== 'pending'
                       
                       return (
                         <div 
                           key={app.id} 
-                          className={`border-2 rounded-xl p-8 hover:shadow-md transition-all ${
-                            hasUnreadNotification ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
-                          }`}
+                          className="border-2 border-gray-200 bg-white rounded-xl p-8 hover:shadow-md transition-all"
                         >
                           <div className="flex justify-between items-start mb-6">
                             <div className="flex-1">
@@ -983,11 +980,6 @@ export default function Profile() {
                                 <span className={`px-4 py-1.5 rounded-lg text-sm font-semibold ${statusConfig.className}`}>
                                   {statusConfig.label}
                                 </span>
-                                {hasUnreadNotification && app.status !== 'pending' && (
-                                  <span className="px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-lg">
-                                    NEW
-                                  </span>
-                                )}
                               </div>
                               <p className="text-gray-600 text-sm mb-2">
                                 投稿者: {app.jobs?.client_name || app.jobs?.client_email}
