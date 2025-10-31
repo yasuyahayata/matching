@@ -122,7 +122,7 @@ export default function Home() {
     try {
       const { data, error } = await supabase
         .from('jobs')
-        .select('*')
+        .select('id, title, description, deadline, skills, client_email, client_name, status, created_at')
         .neq('status', '完了')
         .order('created_at', { ascending: false });
 
