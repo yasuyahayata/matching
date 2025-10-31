@@ -1,7 +1,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/ToastManager'
 
@@ -111,6 +111,7 @@ export default function PostJob() {
   const router = useRouter()
   const { showToast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [userProfile, setUserProfile] = useState(null)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -120,6 +121,29 @@ export default function PostJob() {
   
   const [selectedMainCategory, setSelectedMainCategory] = useState(null)
   const [selectedSkillCategory, setSelectedSkillCategory] = useState(null)
+
+  // プロフィール情報を取得
+  useEffect(() => {
+    if (session?.user?.email) {
+      fetchUserProfile()
+    }
+  }, [session])
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name, company_name')
+        .eq('email', session.user.email)
+        .single()
+
+      if (data) {
+        setUserProfile(data)
+      }
+    } catch (error) {
+      console.error('プロフィール取得エラー:', error)
+    }
+  }
 
   if (!session) {
     return (
@@ -211,6 +235,12 @@ export default function PostJob() {
     try {
       const category = formData.tags.length > 0 ? formData.tags[0] : 'その他'
 
+      // client_nameの優先順位: プロフィールの会社名 > プロフィールの氏名 > Googleの名前 > メールアドレス
+      const clientName = userProfile?.company_name || 
+                        userProfile?.full_name || 
+                        session.user.name || 
+                        session.user.email.split('@')[0]
+
       const { data, error } = await supabase
         .from('jobs')
         .insert([
@@ -221,7 +251,7 @@ export default function PostJob() {
             deadline: formData.deadline || null,
             skills: formData.tags,
             client_email: session.user.email,
-            client_name: session.user.name || session.user.email,
+            client_name: clientName,
             status: '募集中'
           }
         ])
